@@ -27,6 +27,17 @@ struct game {
 	struct player *guest; // Is a pointer because it could be NULL
 };
 
+enum Request {
+	NEW_GAME = 0,
+	JOIN_GAME = 1,
+	LEAVE_GAME = 2
+};
+
+enum Response {
+	OK = 0,
+	ERROR = 1
+};
+
 struct player players[MAX_PLAYERS];
 struct pollfd fds[MAX_PLAYERS + 1]; // +1 for the server
 int nfds = 0;
@@ -37,7 +48,6 @@ struct game games[MAX_GAMES];
 int main() {
 	int server_fd, client_fd;
 	struct sockaddr_in address;
-	char buffer[1024];
 	srand(time(NULL)); // Seed for random number generation
 	// Creating socket.
 	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -83,24 +93,19 @@ int main() {
 			// Add new client to pollfd array
 			if (nfds < MAX_PLAYERS) {
 				printf("Connection accepted.\n");
+				char username[17];
 				fds[nfds].fd = client_fd;
 				fds[nfds].events = POLLIN;
 				// Initialize player
 				players[nplayers].fd = client_fd;
-				ssize_t bytes_read = read(client_fd, buffer, 1024 - 1);
+				ssize_t bytes_read = read(client_fd, username,  sizeof(username));
 				if (bytes_read < 0) {
 					perror("Read failed.");
 					exit(EXIT_FAILURE);
-				} else if (bytes_read == 0) {
-					// Invalid username
-					printf("Error: empty username!");
-					close(client_fd);
-					fds[nfds] = fds[nfds - 1];
-					nfds--;
-				} else {
+				}  else {
 					// Set username
 					memset(players[nplayers].username, 0, 16);
-					strncpy(players[nplayers].username, buffer, 16);
+					strncpy(players[nplayers].username, username, strlen(username));
 					nfds++;
 					nplayers++;
 					printf("Username successfully set.\n");
@@ -117,43 +122,66 @@ int main() {
 		// Check client sockets for data
 		for (int i = 1; i < nfds; i++) {
 		    if (fds[i].revents & POLLIN) {
-		        char buffer[1024];
-		        ssize_t bytes = recv(fds[i].fd, buffer, sizeof(buffer), 0);
-		        if (bytes <= 0) {
+				int received_data = 0;
+		        ssize_t bytes = recv(fds[i].fd, &received_data, sizeof(received_data), 0);
+		        if (bytes < 0) {
 		            // Client disconnected
 		            close(fds[i].fd);
 		            fds[i] = fds[nfds - 1]; // Replace with last entry
 		            players[i] = players[nfds - 1]; // Update client info
 		            nfds--;
 		            i--; // Recheck current index
-		        } else {
-					printf("DEBUG: Received message: %s\n", buffer);
-					int option = strcmp(buffer, "new_game");
-					printf("#DEBUG: option = %d", option);
-		            switch(option) {
-						case 0: 
-							// Create new game
-							struct game new_game;
-							new_game.match_id = rand() % 1000 + 1; // Random match ID
-							new_game.host = players[i - 1]; // Host is the player who created the game
-							new_game.guest = NULL; // No guest yet
-							games[ngames] = new_game; // Add game to list
-							ngames++;
-							printf("New game created with ID: %d\n", new_game.match_id);
-							// Notify host
-							send(fds[i].fd, "Game created successfully", 25, 0);
-						 case 1:
-							printf("DEBUG: Player %s requested game list\n", players[i - 1].username);
-							// Display list of games
-							if (ngames == 0) {
-								printf("No games available\n");
+		        } else if (bytes == 0) {
+					printf("Client disconnected.\n");
+					close(fds[i].fd);
+					fds[i] = fds[nfds - 1]; // Replace with last entry
+					players[i] = players[nfds - 1]; // Update client info
+					nfds--;
+					i--; // Recheck current index
+				} else {
+					switch (ntohl(received_data)) {
+						case NEW_GAME:
+							printf("DEBUG: Player %s requested to create a new game\n", players[i - 1].username);
+							if (ngames < MAX_GAMES) {
+								printf("DEBUG: Request is possible. Sending approval response to host\n");
+								int data = htonl(OK);
+								if (send(fds[i].fd, &data, sizeof(data), 0) < 0) {
+									perror("Send failed");
+									exit(EXIT_FAILURE);
+								}
 							} else {
-								for (int j = 0; j < ngames; j++) {
-									char game_info[50];
-									sprintf(game_info, "Game ID: %d, Host: %s\n", games[j].match_id, games[j].host.username);
-									send(fds[i].fd, game_info, strlen(game_info), 0);
+								printf("DEBUG: Error, request is not possible; Max number of games reached\n");
+								int data = htonl(ERROR);
+								if (send(fds[i].fd, &data, sizeof(data), 0) < 0) {
+									perror("Send failed");
+									exit(EXIT_FAILURE);
 								}
 							}
+							break;
+						case JOIN_GAME:
+							printf("DEBUG: Player %s requested to join a game\n", players[i - 1].username);
+							if (ngames < 1) {
+								printf("DEBUG: Error, request is not possible; No games available\n");
+								int data = htonl(ERROR);
+								if (send(fds[i].fd, &data, sizeof(data), 0) < 0) {
+									perror("Send failed");
+									exit(EXIT_FAILURE);
+								}
+							} else {
+								printf("DEBUG: Request is possible. Sending approval response to host\n");
+								int data = htonl(OK);
+								if (send(fds[i].fd, &data, sizeof(data), 0) < 0) {
+									perror("Send failed");
+									exit(EXIT_FAILURE);
+								}
+							}
+							break;
+						case LEAVE_GAME:
+							printf("DEBUG: Player %s requested to leave a game\n", players[i - 1].username);
+							break;
+						default:
+							printf("DEBUG: Player %s sent an unknown request\n", players[i - 1].username);
+							break;
 					}
 		        }
 		    }
