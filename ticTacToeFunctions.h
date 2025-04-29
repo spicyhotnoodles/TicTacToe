@@ -1,13 +1,7 @@
 #ifndef ticTacToeFunctions_H
 #define ticTacToeFunctions_H
-
 #define SIZE 3
-
-
-typedef struct {
-    int playerfd[2];
-    char board[SIZE][SIZE];
-} Match;
+#include "types.h"
 
 
 void printBoard(char board[SIZE][SIZE], char buffer[]);

@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 #include "ticTacToeFunctions.h"
+#include "types.h"
 
 void printBoard(char board[SIZE][SIZE], char buffer[]) {
     sprintf(buffer, " %c | %c | %c \n", board[0][0], board[0][1], board[0][2]);
