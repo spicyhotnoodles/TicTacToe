@@ -33,4 +33,52 @@ char* prepareListOfGamesForClient(struct game *games, int ngames) {
     }
 
     return buffer;
+    
 }
+
+ /* void hostLeavesGame(struct game *games, int *ngames , int match_id) {
+    for (int i = 0; i < *ngames; i++) {
+        if (games[i].match_id == match_id) {
+            games[i].status = waiting;
+            games[i].guest = NULL;
+            break;
+        }
+    }
+}
+
+void guestLeavesGame(struct game *games, int *ngames , int match_id) {
+    for (int i = 0; i < *ngames; i++) {
+        if (games[i].match_id == match_id) {
+            games[i].status = waiting;
+            games[i].guest = NULL;
+            break;
+        }
+    }
+}
+
+void setGameStatus(struct game *games, int *ngames , int match_id, gameStatus status) {
+    for (int i = 0; i < *ngames; i++) {
+        if (games[i].match_id == match_id) {
+            games[i].status = status;
+            break;
+        }
+    }
+} 
+void setGameResult(struct game *games, int *ngames , int match_id, result res) {
+    for (int i = 0; i < *ngames; i++) {
+        if (games[i].match_id == match_id) {
+            games[i].res = res;
+            break;
+        }
+    }
+} 
+
+ void joinGame(struct game *games, int *ngames , int match_id, struct player guest) {
+    for (int i = 0; i < *ngames; i++) {
+        if (games[i].match_id == match_id) {
+            games[i].guest = &guest;
+            games[i].status = inProgress;
+            break;
+        }
+    }
+}   these function may or may not exist once we plan the flow of our work*/
