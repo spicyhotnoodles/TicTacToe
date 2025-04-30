@@ -8,6 +8,7 @@ void createGame(struct game *games, int *ngames, struct player host) {
     games[*ngames].match_id = rand();       
     games[*ngames].host = host;             
     games[*ngames].guest = NULL;            
+    games[*ngames].status = newCreation;
     (*ngames)++;                            
     printf("DEBUG: Game created successfully. Total games: %d\n", *ngames);
 }
@@ -22,6 +23,9 @@ char* prepareListOfGamesForClient(struct game *games, int ngames) {
     buffer[0] = '\0';
 
     for (int i = 0; i < ngames; i++) {
+        if (games[i].status == inProgress) {
+            continue;
+        }
         sprintf(buffer + strlen(buffer), "Game ID: %d | Host: %s | Guest: %s\n",
                 games[i].match_id,
                 games[i].host.username,

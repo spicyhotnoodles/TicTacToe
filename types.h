@@ -6,8 +6,20 @@
 
 #define SIZE 3
 
+typedef enum{
+    inProgress = 0,
+    waiting = 1,
+    newCreation = 2
+}gameStatus;
+
+typedef enum{
+    win = 0,
+    lose = 1,
+    draw = 2,
+}result;
 
 typedef struct {
+    
     int playerfd[2];
     char board[SIZE][SIZE];
 } Match;
@@ -18,6 +30,8 @@ struct player {
 };
 
 struct game {
+    gameStatus status;
+    result res;
     int match_id;
     struct player host;
     struct player *guest;
