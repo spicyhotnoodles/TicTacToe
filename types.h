@@ -33,7 +33,7 @@ struct game {
     gameStatus status;
     result res;
     int match_id;
-    struct player host;
+    struct player *host;
     struct player *guest;
 };
 

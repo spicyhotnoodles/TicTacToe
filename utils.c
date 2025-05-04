@@ -26,19 +26,17 @@ char* prepareListOfGamesForClient(struct game *games, int ngames) {
         if (games[i].status == inProgress) {
             continue;
         }
-        sprintf(buffer + strlen(buffer), "Game ID: %d | Host: %s | Guest: %s\n",
-                games[i].match_id,
-                games[i].host.username,
-                games[i].guest ? games[i].guest->username : "None");
+        sprintf(buffer + strlen(buffer), "Game ID: %d | Host: %s ", games[i].match_id, games[i].host.username);
     }
 
     return buffer;
     
 }
 
- /* void hostLeavesGame(struct game *games, int *ngames , int match_id) {
+ /*void hostLeavesGame(struct game *games, int *ngames , int match_id) {
     for (int i = 0; i < *ngames; i++) {
         if (games[i].match_id == match_id) {
+            games[i].host = games[i].guest;
             games[i].status = waiting;
             games[i].guest = NULL;
             break;
@@ -81,4 +79,4 @@ void setGameResult(struct game *games, int *ngames , int match_id, result res) {
             break;
         }
     }
-}   these function may or may not exist once we plan the flow of our work*/
+}   these functions may or may not exist once we plan the flow of our work*/
