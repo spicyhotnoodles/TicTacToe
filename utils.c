@@ -4,7 +4,7 @@
 #include "utils.h"
 #include <string.h>
 
-void createGame(struct game *games, int *ngames, struct player host) {
+void createGame(struct game *games, int *ngames, struct player *host) {
     games[*ngames].match_id = rand();       
     games[*ngames].host = host;             
     games[*ngames].guest = NULL;            
@@ -26,7 +26,7 @@ char* prepareListOfGamesForClient(struct game *games, int ngames) {
         if (games[i].status == inProgress) {
             continue;
         }
-        sprintf(buffer + strlen(buffer), "Game ID: %d | Host: %s ", games[i].match_id, games[i].host.username);
+        sprintf(buffer + strlen(buffer), "Game ID: %d | Host: %s ", games[i].match_id, games[i].host->username);
     }
 
     return buffer;
