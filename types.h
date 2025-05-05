@@ -29,13 +29,14 @@ struct player {
     char username[16];
 };
 
-struct game {
+typedef struct {
     gameStatus status;
     result res;
     int match_id;
     struct player *host;
     struct player *guest;
-};
+    char board[SIZE][SIZE];
+}game;
 
 enum Request {
     NEW_GAME = 0,
