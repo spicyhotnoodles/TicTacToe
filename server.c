@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "types.h"
 #include "ticTacToeFunctions.h"
+#include "gameFunctions.h"
 #define PORT 6969
 #define QLEN 2
 #define MAX_PLAYERS 50
@@ -161,6 +162,18 @@ int main() {
                                 if (send(fds[i].fd, gameList, strlen(gameList), 0) < 0) {
                                     perror("Send failed");
                                     exit(EXIT_FAILURE);
+                                }
+                                uint32_t gameID;
+                                ssize_t bytes = recv(fds[i].fd, &gameID, sizeof(gameID), 0);
+                                if (bytes < 0) {
+                                    perror("Read failed");
+                                    exit(EXIT_FAILURE);
+                                } else {
+                                    gameID = ntohl(gameID);
+                                    if(declineOrAcceptGuest(games , &ngames, gameID, &players[i - 1]) == true){
+                                        joinGame(games, &ngames, gameID, players[i - 1]);
+                                    }
+                                    printf("DEBUG: Player %s joined game with ID %d\n", players[i - 1].username, gameID);
                                 }
 
                             }
