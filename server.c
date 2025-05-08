@@ -138,21 +138,24 @@ int main() {
 		    if (fds[i].revents & POLLIN) {
 				int received_data = 0;
 		        ssize_t bytes = recv(fds[i].fd, &received_data, sizeof(received_data), 0);
-		        if (bytes < 0) {
-		            // Client disconnected
+		        if (bytes <= 0) {
+					if (bytes < 0) {
+						perror("Receive failed");
+					} else {
+						printf("Client disconnected.\n");
+					}
+		            // Remove client from pollfd array
+		            printf("DEBUG: Removing player %s from the list\n", players[i - 1].username);
+		            for (int j = i; j < nfds - 1; j++) {
+		                fds[j] = fds[j + 1];
+		                players[j] = players[j + 1];
+					}
 		            close(fds[i].fd);
 		            fds[i] = fds[nfds - 1]; // Replace with last entry
 		            players[i] = players[nfds - 1]; // Update client info
 		            nfds--;
 		            i--; // Recheck current index
-		        } else if (bytes == 0) {
-					printf("Client disconnected.\n");
-					close(fds[i].fd);
-					fds[i] = fds[nfds - 1]; // Replace with last entry
-					players[i] = players[nfds - 1]; // Update client info
-					nfds--;
-					i--; // Recheck current index
-				} else {
+		        } else {
 					switch (ntohl(received_data)) {
 						case NEW_GAME:
 							printf("DEBUG: Player %s requested to create a new game\n", players[i - 1].username);
