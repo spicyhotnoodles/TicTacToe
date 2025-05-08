@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <time.h>
-
+#include <pthread.h>
 
 #define PORT 8080
 #define QLEN 2
@@ -44,6 +44,20 @@ int nfds = 0;
 int nplayers = 0;
 int ngames = 0;
 struct game games[MAX_GAMES];
+
+// Thread routine to handle game creation logic
+void *handle_game(void *args) {
+	// For test purposes...
+	sleep(4);
+	printf("Notifying host game is starting\n");
+	int data = htonl(GAME_START);
+	int fd = *(int *) args;
+	if (send(fd, &data, sizeof(data), 0) < 0) {
+		perror("Send failed");
+		exit(EXIT_FAILURE);
+	}
+	pthread_exit(NULL);
+}
 
 int main() {
 	int server_fd, client_fd;
@@ -149,6 +163,22 @@ int main() {
 									perror("Send failed");
 									exit(EXIT_FAILURE);
 								}
+								struct game new_game;
+								new_game.match_id = rand() % 1000; // Random match ID
+								new_game.host = players[i - 1]; // Host is the player who created the game
+								new_game.guest = NULL; // No guest yet
+								games[ngames] = new_game; // Add game to list
+								ngames++;
+								printf("DEBUG: Game created with ID %d\n", new_game.match_id);
+								// TODO: #0. (Optional) Create a thread to manage logic #1. Create a game #2. Wait for another player #3. Notify host #4. Monitor game   
+								pthread_t thread_id;
+								pthread_attr_t attr;
+								pthread_attr_init(&attr);
+								if (pthread_create(&thread_id, &attr, &handle_game, (void *) &fds[i].fd) < 0) {
+									perror("Thread creation failed");
+									exit(EXIT_FAILURE);
+								}
+								pthread_join(thread_id, NULL);
 							} else {
 								printf("DEBUG: Error, request is not possible; Max number of games reached\n");
 								int data = htonl(ERROR);
