@@ -14,7 +14,7 @@ class App:
 
     def run(self):
         name = prompt_username(MAX_NAME_LEN)
-        self.client.send_gusername(name)
+        self.client.send_username(name)
 
         while True:
             clear_screen()
