@@ -38,6 +38,7 @@ enum Response {
 	ERROR = 1
 };
 
+// TODO: Use a better data structure to keep track of players: eg. hash table
 struct player players[MAX_PLAYERS];
 struct pollfd fds[MAX_PLAYERS + 1]; // +1 for the server
 int nfds = 0;
@@ -135,6 +136,7 @@ int main() {
 		}
 		// Check client sockets for data
 		for (int i = 1; i < nfds; i++) {
+			// TODO: Fix player map
 		    if (fds[i].revents & POLLIN) {
 				int received_data = 0;
 		        ssize_t bytes = recv(fds[i].fd, &received_data, sizeof(received_data), 0);
