@@ -35,7 +35,8 @@ enum Request {
 
 enum Response {
 	OK = 0,
-	ERROR = 1
+	ERROR = 1,
+	GAME_START = 2
 };
 
 // TODO: Use a better data structure to keep track of players: eg. hash table
