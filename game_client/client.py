@@ -35,6 +35,8 @@ class App:
     def _new_game(self):
         resp = self.client.send_request(Request.NEW_GAME)
         self._handle_resp(resp, "Game created!")
+        print("Waiting for players to join…")
+        self.client.poll()
 
     def _join_game(self):
         resp = self.client.send_request(Request.JOIN_GAME)

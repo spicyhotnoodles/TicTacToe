@@ -8,6 +8,8 @@ class Request(IntEnum):
 class Response(IntEnum):
     OK    = 0
     ERROR = 1
+    GAME_START = 2
+    GAME_LIST = 3
 
 def serialize_request(req: Request) -> bytes:
     return req.to_bytes(4, "big")

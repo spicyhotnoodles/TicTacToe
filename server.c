@@ -209,6 +209,13 @@ int main() {
 									perror("Send failed");
 									exit(EXIT_FAILURE);
 								}
+								printf("DEBUG: Sending list of games to player %s\n", players[i - 1].username);
+								// WRONG
+								if (send(fds[i].fd, &games[0], ngames * sizeof(struct game), 0) < 0) {
+									perror("Send failed");
+									exit(EXIT_FAILURE);
+								}
+
 							}
 							break;
 						case LEAVE_GAME:
