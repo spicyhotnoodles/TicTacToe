@@ -11,7 +11,6 @@
 #include <time.h>
 #include "utils.h"
 #include "types.h"
-#include "ticTacToeFunctions.h"
 #include "gameFunctions.h"
 #define PORT 6969
 #define QLEN 2
@@ -23,7 +22,7 @@ struct pollfd fds[MAX_PLAYERS + 1]; // +1 for the server
 int nfds = 0;
 int nplayers = 0;
 int ngames = 0;
-struct game games[MAX_GAMES];
+game games[MAX_GAMES];
 
 int main() {
     int server_fd, client_fd;
@@ -130,7 +129,7 @@ int main() {
                                     exit(EXIT_FAILURE);
                                 }
                                 
-                                createGame(games, &ngames, players[i - 1]);
+                                createGame(games, &ngames, &players[i - 1]);
                                 
                             } else {
                                 printf("DEBUG: Error, request is not possible; Max number of games reached\n");
@@ -171,7 +170,7 @@ int main() {
                                 } else {
                                     gameID = ntohl(gameID);
                                     if(declineOrAcceptGuest(games , &ngames, gameID, &players[i - 1]) == true){
-                                        joinGame(games, &ngames, gameID, players[i - 1]);
+                                        joinGame(games, &ngames, gameID, &players[i - 1]);
                                     }
                                     printf("DEBUG: Player %s joined game with ID %d\n", players[i - 1].username, gameID);
                                 }

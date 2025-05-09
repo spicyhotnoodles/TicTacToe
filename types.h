@@ -6,6 +6,13 @@
 
 #define SIZE 3
 
+struct player {
+    int fd;
+    char username[16];
+};
+
+extern struct player players[MAX_PLAYERS];
+
 typedef enum{
     inProgress = 0,
     waiting = 1,
@@ -17,17 +24,6 @@ typedef enum{
     lose = 1,
     draw = 2,
 }result;
-
-typedef struct {
-    
-    int playerfd[2];
-    char board[SIZE][SIZE];
-} Match;
-
-struct player {
-    int fd;
-    char username[16];
-};
 
 typedef struct {
     gameStatus status;

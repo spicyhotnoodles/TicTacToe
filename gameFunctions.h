@@ -1,6 +1,7 @@
-#ifndef gameFunctions_H
-#define gameFunctions_H
+#ifndef gameFunctions_h
+#define gameFunctions_h
 #define SIZE 3
+#include <stdbool.h>
 #include "types.h"
 
 
@@ -9,7 +10,7 @@ void printBoard(char board[SIZE][SIZE], char buffer[]);
 
 bool checkWin(char board[SIZE][SIZE], char player);
 
-int gameLogic(Match* match);
+bool gameLogic(game* match);
 
 bool handleRematch(int winnerFD, int loserFD);
 

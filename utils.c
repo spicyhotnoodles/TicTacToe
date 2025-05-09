@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 
-void createGame(struct game *games, int *ngames, struct player *host) {
+void createGame(game *games, int *ngames, struct player *host) {
     games[*ngames].match_id = rand();       
     games[*ngames].host = host;             
     games[*ngames].guest = NULL;            
@@ -15,7 +15,7 @@ void createGame(struct game *games, int *ngames, struct player *host) {
     printf("DEBUG: Game created successfully. Total games: %d\n", *ngames);
 }
 
-char* prepareListOfGamesForClient(struct game *games, int ngames) {
+char* prepareListOfGamesForClient(game *games, int ngames) {
     char *buffer = malloc(4096);
     if (!buffer) {
         perror("Malloc fallita");
@@ -35,7 +35,7 @@ char* prepareListOfGamesForClient(struct game *games, int ngames) {
     
 }
 
-bool declineOrAcceptGuest(struct game *games, int *ngames , int match_id, struct player *guest){
+bool declineOrAcceptGuest(game *games, int *ngames , int match_id, struct player *guest){
     char buffer[1024];
     snprintf(buffer, sizeof(buffer), "Player %s wants to join your game. Do you accept? (y/n): ", guest->username);
     if (send(games[match_id].host->fd, buffer, strlen(buffer), 0) < 0) {
@@ -71,7 +71,7 @@ bool declineOrAcceptGuest(struct game *games, int *ngames , int match_id, struct
 
 }
 //TODO joinGame function should start the game or lead to a function that does it
-void joinGame(struct game *games, int *ngames, int match_id, struct player *guest) {
+void joinGame(game *games, int *ngames, int match_id, struct player *guest) {
     for (int i = 0; i < *ngames; i++) {
         if (games[i].match_id == match_id) {
             games[i].guest = guest;
@@ -119,12 +119,4 @@ void setGameResult(struct game *games, int *ngames , int match_id, result res) {
     }
 } 
 
- void joinGame(struct game *games, int *ngames , int match_id, struct player guest) {
-    for (int i = 0; i < *ngames; i++) {
-        if (games[i].match_id == match_id) {
-            games[i].guest = &guest;
-            games[i].status = inProgress;
-            break;
-        }
-    }
-}   these functions may or may not exist once we plan the flow of our work*/
+s   these functions may or may not exist once we plan the flow of our work*/

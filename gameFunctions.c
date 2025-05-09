@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/socket.h>
-#include "ticTacToeFunctions.h"
+#include "gameFunctions.h"
 #include "types.h"
 //TODO check for old structs and swap them with new ones
 void printBoard(char board[SIZE][SIZE], char buffer[]) {
