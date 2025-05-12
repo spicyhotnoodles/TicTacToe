@@ -1,3 +1,3 @@
 HOST    = "localhost"
-PORT    = 8080
+PORT    = 6969
 MAX_NAME_LEN = 16

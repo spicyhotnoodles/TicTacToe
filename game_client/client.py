@@ -38,6 +38,7 @@ class App:
         print("Waiting for players to join…")
         self.client.poll()
 
+
     def _join_game(self):
         resp = self.client.send_request(Request.JOIN_GAME)
         self._handle_resp(resp, "Joined game!")
@@ -51,5 +52,5 @@ class App:
         if resp is Response.OK:
             print(success_msg)
         else:
-            print("❌ Error from server.")
 
+            print("❌ Error from server.")
