@@ -14,6 +14,19 @@ class GameClient:
         self.sock.sendall(serialize_request(req))
         data = self._recv_exact(4)
         return deserialize_response(data)
+    
+    # Wait for server to notify for a specific event
+    def poll(self):
+        data = self.sock.recv(1024)
+        if not data:
+            print("❌ Error from server: no data received")
+        else:
+            response = deserialize_response(data)
+            if response == Response.GAME_START:
+                print("Game started!")
+                return
+            else:
+                print("❌ Error from server: unknown response")
 
     def _recv_exact(self, n: int) -> bytes:
         buf = bytearray()

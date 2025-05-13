@@ -27,6 +27,7 @@ while True:
 
 clientSocket.close()
 """
+
 # run.py
 from game_client.client import App
 

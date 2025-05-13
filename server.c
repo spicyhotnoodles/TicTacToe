@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <time.h>
+
 #include "utils.h"
 #include "types.h"
 #include "gameFunctions.h"
@@ -22,6 +23,7 @@ struct pollfd fds[MAX_PLAYERS + 1]; // +1 for the server
 int nfds = 0;
 int nplayers = 0;
 int ngames = 0;
+
 game games[MAX_GAMES];
 
 int main() {
@@ -64,7 +66,7 @@ int main() {
             exit(EXIT_FAILURE);
         }
         // Check for new connections
-        if (fds[0].revents && POLLIN) {
+        if (fds[0].revents & POLLIN) {
             if ((client_fd = accept(server_fd, (struct sockaddr *) &address, &length)) < 0) {
                 perror("Accept failed.");
                 exit(EXIT_FAILURE);
