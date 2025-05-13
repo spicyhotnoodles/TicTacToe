@@ -66,7 +66,7 @@ int main() {
             exit(EXIT_FAILURE);
         }
         // Check for new connections
-        if (fds[0].revents && POLLIN) {
+        if (fds[0].revents & POLLIN) {
             if ((client_fd = accept(server_fd, (struct sockaddr *) &address, &length)) < 0) {
                 perror("Accept failed.");
                 exit(EXIT_FAILURE);
