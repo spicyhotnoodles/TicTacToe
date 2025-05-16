@@ -2,8 +2,11 @@
 from .ui import clear_screen, print_title, prompt_username, prompt_menu_choice
 from .connection import GameClient
 from .protocol import Request, Response
+import struct
 from .config import MAX_NAME_LEN
+from .utils import ServerError
 import shutil
+import re
 
 MENU = ["New Game", "Join Game", "Credits", "Quit"]
 
@@ -15,7 +18,6 @@ class App:
     def run(self):
         name = prompt_username(MAX_NAME_LEN)
         self.client.send_username(name)
-
         while True:
             clear_screen()
             print_title()
@@ -34,14 +36,35 @@ class App:
 
     def _new_game(self):
         resp = self.client.send_request(Request.NEW_GAME)
-        self._handle_resp(resp, "Game created!")
-        print("Waiting for players to join…")
-        self.client.poll()
+        try:
+            self._handle_resp(resp, "Game created!")
+            print("Waiting for players to join…")
+            self.client.poll()
+        except ServerError:
+            print("Exception occurred: error from server!")
 
 
     def _join_game(self):
         resp = self.client.send_request(Request.JOIN_GAME)
-        self._handle_resp(resp, "Joined game!")
+        try:
+            self._handle_resp(resp, "Games are available!")
+            raw = self.client.sock.recv(4096).decode()
+            games = re.findall(r"Game ID: (\d+) \| Host: (\w+)", raw)
+            print("Available Games:")
+            for i, (game_id, host) in enumerate(games):
+                print(f"{i + 1}. Game ID: {game_id} | Host: {host}")
+            uinput = input("Select a game by index: ")
+            while True:
+                if not uinput.isdigit() or int(uinput) < 1 or int(uinput) > len(games):
+                    print("Invalid input. Please enter a valid index.")
+                    pass
+                else:
+                    break
+            game_id = games[int(uinput) - 1][0]  # Get the selected game ID
+            print("Selected: ", game_id)
+            self.client.sock.sendall(struct.pack(">I", int(game_id))) # Send game ID in binary format 
+        except ServerError:
+            print("Exception occurred: error from server!")
 
     def _credits(self):
         clear_screen()
@@ -52,5 +75,4 @@ class App:
         if resp is Response.OK:
             print(success_msg)
         else:
-
-            print("❌ Error from server.")
+            raise ServerError
