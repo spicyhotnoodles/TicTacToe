@@ -53,3 +53,10 @@ dkms.conf
 
 # Build directory
 build/
+
+# Main exe
+main
+
+# Python cache
+__pycache__/
+
