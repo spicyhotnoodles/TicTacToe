@@ -35,21 +35,37 @@ char* prepareListOfGamesForClient(game *games, int ngames) {
     
 }
 
+int getGameIndexById(game *games, int ngames, int match_id) {
+    for (int i = 0; i < ngames; i++) {
+        if (games[i].match_id == match_id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 bool declineOrAcceptGuest(game *games, int *ngames , int match_id, struct player *guest){
+
+    int index = getGameIndexById(games, *ngames, match_id);
+    if (index == -1) {
+        fprintf(stderr, "DEBUG: Game with ID %d not found\n", match_id);
+        return false;
+    }
+
     char buffer[1024];
     snprintf(buffer, sizeof(buffer), "Player %s wants to join your game. Do you accept? (y/n): ", guest->username);
-    if (send(games[match_id].host->fd, buffer, strlen(buffer), 0) < 0) {
+    if (send(games[index].host->fd, buffer, strlen(buffer), 0) < 0) {
         perror("Send failed");
         return -1;
     }
-    ssize_t bytes_received = recv(games[match_id].host->fd, buffer, sizeof(buffer), 0);
+    ssize_t bytes_received = recv(games[index].host->fd, buffer, sizeof(buffer), 0);
     if (bytes_received < 0) {
         perror("Recv failed");
         return -1; 
     }
     if(buffer[0] == 'y' || buffer[0] == 'Y') {
-        games[match_id].guest = guest;
-        games[match_id].status = inProgress;
+        games[index].guest = guest;
+        games[index].status = inProgress;
         return true;
     } else if (buffer[0] == 'n' || buffer[0] == 'N') {
 
@@ -62,7 +78,7 @@ bool declineOrAcceptGuest(game *games, int *ngames , int match_id, struct player
     }
     else {
         snprintf(buffer, sizeof(buffer), "Invalid response.The guest will his access denied \n");
-        if (send(games[match_id].host->fd, buffer, strlen(buffer), 0) < 0) {
+        if (send(games[index].host->fd, buffer, strlen(buffer), 0) < 0) {
             perror("Send failed");
             return -1;
         }
