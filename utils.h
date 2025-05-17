@@ -11,6 +11,8 @@ bool declineOrAcceptGuest( game *games, int *ngames, int match_id, struct player
 
 void joinGame( game *games, int *ngames, int match_id, struct player *guest);
 
+int getGameIndexById(game *games, int ngames, int match_id);
+
 // void hostLeavesGame(struct game *games, int *ngames , int match_id);
 
 // void guestLeavesGame(struct game *games, int *ngames , int match_id);
