@@ -66,6 +66,11 @@ bool declineOrAcceptGuest(game *games, int *ngames , int match_id, struct player
     }
 
     if(buffer[0] == 'y' || buffer[0] == 'Y') {
+        snprintf(buffer, sizeof(buffer), "The host accepted your request to join the game.\n");
+        if (send(guest->fd, buffer, strlen(buffer), 0) < 0) {
+            perror("Send failed");
+            return false;
+        }
         games[index].guest = guest;
         games[index].status = inProgress;
         return true;
