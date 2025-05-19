@@ -1,5 +1,6 @@
 # game_client/connection.py
 import socket
+from .utils import ServerError
 from .config import HOST, PORT
 from .protocol import serialize_request, deserialize_response, Response, Request
 
@@ -14,19 +15,32 @@ class GameClient:
         self.sock.sendall(serialize_request(req))
         data = self._recv_exact(4)
         return deserialize_response(data)
-    
-    # Wait for server to notify for a specific event
-    def poll(self):
+
+    # Wait for approval from the host of the session
+    def wait_for_host(self):
         data = self.sock.recv(1024)
         if not data:
-            print("❌ Error from server: no data received")
+            raise ServerError
         else:
-            response = deserialize_response(data)
-            if response == Response.GAME_START:
-                print("Game started!")
-                return
+            """
+            Hardcoded check. This is wrong and should be changed (Its not scalable)
+            Instead we should use an enum code like JOIN_DENY and JOIN_ACCEPT 
+            """
+            if ('accepted' in data.decode()): 
+                return True
+            else: 
+                return False
+
+    # Prompt the host to accept or deny guest's request to join the game
+    def wait_for_guest(self):
+        data = self.sock.recv(1024)
+        while True:            
+            uinput = input(data.decode());
+            if uinput.lower() not in ('y','n'):
+                print("Invalid input: please try again")
             else:
-                print("❌ Error from server: unknown response")
+                break
+        self.sock.sendall(uinput.encode())
 
     def _recv_exact(self, n: int) -> bytes:
         buf = bytearray()

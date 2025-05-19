@@ -39,7 +39,7 @@ class App:
         try:
             self._handle_resp(resp, "Game created!")
             print("Waiting for players to join…")
-            self.client.poll()
+            self.client.wait_for_guest()
         except ServerError:
             print("Exception occurred: error from server!")
 
@@ -62,7 +62,12 @@ class App:
                     break
             game_id = games[int(uinput) - 1][0]  # Get the selected game ID
             print("Selected: ", game_id)
-            self.client.sock.sendall(struct.pack(">I", int(game_id))) # Send game ID in binary format 
+            self.client.sock.sendall(struct.pack(">I", int(game_id))) # Send game ID in binary format
+            printf("Waiting for host to approve the request...")
+            if self.client.wait_for_host():
+                print("Host accepted request!")
+            else:
+                print("Host denied request")
         except ServerError:
             print("Exception occurred: error from server!")
 
