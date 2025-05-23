@@ -63,7 +63,7 @@ class App:
             game_id = games[int(uinput) - 1][0]  # Get the selected game ID
             print("Selected: ", game_id)
             self.client.sock.sendall(struct.pack(">I", int(game_id))) # Send game ID in binary format
-            printf("Waiting for host to approve the request...")
+            print("Waiting for host to approve the request...")
             if self.client.wait_for_host():
                 print("Host accepted request!")
             else:
