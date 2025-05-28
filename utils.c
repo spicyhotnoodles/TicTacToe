@@ -5,6 +5,17 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/socket.h>
+#include <pthread.h>
+#include "thread.h"
+
+void startGame(game* match) {
+    pthread_t thread_id;
+    if (pthread_create(&thread_id, NULL, gameThread, (void*)match) != 0) {
+        perror("Failed to create game thread");
+        return;
+    }
+    pthread_detach(thread_id);
+}
 
 void createGame(game *games, int *ngames, struct player *host) {
     games[*ngames].match_id = rand();       

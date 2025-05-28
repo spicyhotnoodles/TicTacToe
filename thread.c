@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 void* gameThread(void* arguement) {
     game* match = (game*)arguement;
@@ -26,8 +27,6 @@ void* gameThread(void* arguement) {
     } while (rematchRequested);
 
     
-    /*close(match->playerfd[0]);
-    close(match->playerfd[1]);
-    free(match);*/
+    free(match);
     return NULL;
 }

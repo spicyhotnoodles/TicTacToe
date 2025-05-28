@@ -3,6 +3,8 @@
 #include "types.h"
 #include <stdbool.h>
 
+void startGame(game* match);
+
 void createGame( game *games, int *ngames, struct player *host);
 
 char* prepareListOfGamesForClient(game *games, int ngames);

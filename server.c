@@ -175,6 +175,11 @@ int main() {
                                         joinGame(games, &ngames, gameID, &players[i - 1]);
                                     }
                                     printf("DEBUG: Player %s joined game with ID %d\n", players[i - 1].username, gameID);
+
+                                    int index = getGameIndexById(games, ngames, gameID);
+                                     if (index != -1) {
+                                        startGame(&games[index]);
+                                    }
                                 }
 
                             }
