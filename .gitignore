@@ -53,3 +53,8 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+# VSCode settings
+.vscode/
+
+# Build dir
+build/
