@@ -1,19 +1,12 @@
-from enum import IntEnum
+from enum import Enum, auto
 
-class Request(IntEnum):
-    NEW_GAME   = 0
-    JOIN_GAME  = 1
-    LEAVE_GAME = 2
+class RequestType(Enum):
+    NEWGAME= 0
+    JOINGAME = 1
+    REMATCH = 2
+    LOGOUT = 3
 
-class Response(IntEnum):
-    OK    = 0
+class ResponseType(Enum):
+    OK = 0
     ERROR = 1
-    GAME_START = 2
-    GAME_LIST = 3
-
-def serialize_request(req: Request) -> bytes:
-    return req.to_bytes(4, "big")
-
-def deserialize_response(data: bytes) -> Response:
-    code = int.from_bytes(data, "big")
-    return Response(code)
+    DENIED = 2

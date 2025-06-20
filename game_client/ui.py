@@ -2,34 +2,39 @@
 import shutil
 import os
 
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+class UIManager:
 
-cols = shutil.get_terminal_size().columns
+    def __init__(self):
+        self.cols = shutil.get_terminal_size().columns
+        self.menu_options = ["New Game", "Join Game", "Game List", "Credits", "Logout"]
 
-def print_title():
-    art = [
-        "  ████████╗██╗ ██████╗    ████████╗ █████╗  ██████╗    ████████╗ ██████╗ ███████╗",
-        "  ╚══██╔══╝██║██╔════╝    ╚══██╔══╝██╔══██╗██╔════╝    ╚══██╔══╝██╔═══██╗██╔════╝",
-        "     ██║   ██║██║            ██║   ███████║██║            ██║   ██║   ██║█████╗  ",
-        "     ██║   ██║██║            ██║   ██╔══██║██║            ██║   ██║   ██║██╔══╝  ",
-        "     ██║   ██║╚██████╗       ██║   ██║  ██║╚██████╗       ██║   ╚██████╔╝███████╗",
-        "     ╚═╝   ╚═╝ ╚═════╝       ╚═╝   ╚═╝  ╚═╝ ╚═════╝       ╚═╝    ╚═════╝ ╚══════╝" 
-    ]
-    for line in art:
-        print(line.center(cols))
+    def clear(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
 
-def prompt_username(max_len: int) -> str:
-    while True:
-        name = input("Enter a username: ")
-        if not name:
-            print("Username cannot be empty.")
-        elif len(name) > max_len:
-            print(f"Username too long. Max {max_len} chars.")
-        else:
-            return name
+    def title(self):
+        art = [
+            "  ████████╗██╗ ██████╗    ████████╗ █████╗  ██████╗    ████████╗ ██████╗ ███████╗",
+            "  ╚══██╔══╝██║██╔════╝    ╚══██╔══╝██╔══██╗██╔════╝    ╚══██╔══╝██╔═══██╗██╔════╝",
+            "     ██║   ██║██║            ██║   ███████║██║            ██║   ██║   ██║█████╗  ",
+            "     ██║   ██║██║            ██║   ██╔══██║██║            ██║   ██║   ██║██╔══╝  ",
+            "     ██║   ██║╚██████╗       ██║   ██║  ██║╚██████╗       ██║   ╚██████╔╝███████╗",
+            "     ╚═╝   ╚═╝ ╚═════╝       ╚═╝   ╚═╝  ╚═╝ ╚═════╝       ╚═╝    ╚═════╝ ╚══════╝" 
+        ]
+        for line in art:
+            print(line.center(self.cols))
 
-def prompt_menu_choice(options: list[str]) -> str:
-    for i, opt in enumerate(options, 1):
-        print(f"{i}. {opt}".center(cols))
-    return input("Choice: ")
+    def menu(self):
+        for i, opt in enumerate(self.menu_options, 1):
+            print(f"{i}. {opt}".center(self.cols))
+
+    def credits(self):
+        self.clear()
+        print("Game Client - Credits".center(self.cols))
+        print("=" * self.cols)
+        print("Developed by: Pietro Ciuci and Michele Esito".center(self.cols))
+        print("Version: 1.0.0".center(self.cols))
+        print("=" * self.cols)
+        input("Press Enter to return to the menu...")
+        self.clear()
+        self.title()
+        self.menu()
