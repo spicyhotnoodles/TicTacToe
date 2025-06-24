@@ -1,16 +1,24 @@
+# Makefile for your project
+
+# Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -g -Igame_server
-SRC = main.c
-OBJS = $(SRC:.c=.o)
+CFLAGS = -g -Wall -O2 -Wextra -Igame_server
+
+# Sources and build
+SRC = main.c game_server/communication.c game_server/hash.c
+OBJ = $(SRC:.c=.o)
 TARGET = build/server
 
+# Default target
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS)
+# Build executable
+$(TARGET): $(OBJ)
+	@mkdir -p build
+	$(CC) $(CFLAGS) -o $@ $^
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
+# Clean build artifacts
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJ) $(TARGET)
+
+.PHONY: all clean
