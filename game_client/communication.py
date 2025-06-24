@@ -9,21 +9,14 @@ class CommunicationManager:
         self.pack_size = struct.calcsize(self.fmt)
 
     def send_request(self, request_type: RequestType, network):
-        match request_type:
-            case RequestType.NEWGAME:
-                # Dummy logic for starting a new game
-                pass
-            case RequestType.JOINGAME:
-                # Dummy logic for joining a game
-                pass
-            case RequestType.REMATCH:
-                # Dummy logic for rematching
-                pass
-            case RequestType.LOGOUT:
-                # Dummy logic for logging out
-                pass
-            case _:
-                print(f"Unsupported request type: {request_type}")
+        network.send(request_type.value.to_bytes(4, 'big'))
+        print("Request sent to the server.")
+        message, response = self.receive_response(network)
+        if response == ResponseType.ERROR:
+            print(f"Error: {message}")
+        else:
+            print(f"Response: {message}")
+
 
     def receive_response(self, network):
         try:
