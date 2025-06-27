@@ -24,6 +24,8 @@ class UIManager:
             print(line.center(self.cols))
 
     def menu(self):
+        self.clear()
+        self.title()
         for i, opt in enumerate(self.menu_options, 1):
             print(f"{i}. {opt}".center(self.cols))
 
@@ -35,6 +37,17 @@ class UIManager:
         print("Version: 1.0.0".center(self.cols))
         print("=" * self.cols)
         input("Press Enter to return to the menu...")
-        self.clear()
-        self.title()
         self.menu()
+
+    def game_list(self, games):
+        print("Available Games:".center(self.cols))
+        for i, game in enumerate(games, 1):
+            print(f"{i}. {game}".center(self.cols))
+
+    def prompt_message(self, message, default_action="Press Enter to continue..."):
+        self.clear()
+        print(message.center(self.cols))
+        uinput = input(default_action)
+        self.menu()
+        return uinput
+
