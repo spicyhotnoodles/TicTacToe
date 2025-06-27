@@ -49,3 +49,8 @@ bool username_exists(const char* username) {
     }
     return false;
 }
+
+long random_id(int seed) {
+    srand(time(0) + seed);
+    return ((rand() % 90000) + 10000); // Random number between 10000 and 99999
+}

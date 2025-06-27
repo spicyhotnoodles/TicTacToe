@@ -2,6 +2,7 @@
 #define COMMUNICATION_H
 
 #include "types.h"
+#include "hash.h"
 
 // Function prototypes for communication handling
 bool send_response(int fd, char *message, enum StatusCode status_code);

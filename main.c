@@ -1,4 +1,3 @@
-//TODO: The logic that checks if a username already exists is not working properly. Fix it.
 //TODO: Everytime the server is stopped all clients need to be disconnected.
 //TODO: Find a better data structure to store players and games.
 
@@ -8,8 +7,9 @@
 #include "game_server/hash.h" // Include the hash header for player management functions
 
 struct player_table_entry player_table[PLAYER_TABLE_SIZE];
-
 struct pollfd fds[MAX_PLAYERS + 1]; // +1 for the server
+struct game games[MAX_GAMES]; // Array to hold active games
+
 int nfds = 0;
 int nplayers = 0;
 int ngames = 0;
@@ -109,6 +109,7 @@ int main() {
                             new_player.fd = client_fd;
                             strncpy(new_player.username, username, sizeof(new_player.username) - 1);
                             new_player.username[sizeof(new_player.username) - 1] = '\0'; // Ensure null termination
+                            new_player.ngames = 0; // Initialize number of games
                             printf("DEBUG: Player initialized: %s\n", new_player.username);
                             // Add player to the list
                             player_add(new_player);

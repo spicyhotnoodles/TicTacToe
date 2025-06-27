@@ -7,7 +7,7 @@
 int hash_fd(int fd);
 
 // Function to find a player by file descriptor
-struct player_table_entry *find_player_by_fd(int fd);
+struct player *player_get(int fd);
 
 // Function to add a new player to the player table
 bool player_add(struct player p);
@@ -17,5 +17,7 @@ bool player_remove(int fd);
 
 // Function to check if a username already exists in the player table
 bool username_exists(const char* username);
+
+long random_id(int seed);
 
 #endif

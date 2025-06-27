@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <poll.h>
+#include <time.h>
 
 #include "config.h"
 
@@ -32,6 +33,7 @@ struct player {
     int fd;
     char username[17]; // 16 characters + null terminator
     struct game *games[MAX_GAMES_PER_PLAYER];
+    int ngames; // Number of games the player is involved in
 };
 
 struct player_table_entry {
@@ -58,7 +60,6 @@ extern int nfds; // Number of file descriptors currently in use
 extern int nplayers; // Number of players currently connected
 extern int ngames; // Number of games currently active
 extern struct player_table_entry player_table[PLAYER_TABLE_SIZE];
-
-
+extern struct game games[MAX_GAMES]; // Array to hold active games
 
 #endif
