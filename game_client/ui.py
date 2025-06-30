@@ -44,7 +44,7 @@ class UIManager:
         for i, game in enumerate(games, 1):
             print(f"{i}. {game}".center(self.cols))
 
-    def prompt_message(self, message, default_action="Press Enter to continue..."):
+    def alert(self, message, default_action="Press Enter to continue..."):
         self.clear()
         print(message.center(self.cols))
         uinput = input(default_action)

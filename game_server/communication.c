@@ -1,18 +1,5 @@
 #include "communication.h"
 
-/* __attribute__((overloadable)) bool send_response(int fd, char *message, enum StatusCode status_code) {
-	struct packet pkt;
-    pkt.status_code = htonl(status_code);
-    strncpy(pkt.message, message, MAX_MSG_LEN - 1);
-    pkt.message[MAX_MSG_LEN - 1] = '\0'; // Ensure null termination
-    if (send(fd, &pkt, sizeof(pkt), 0) < 0) {
-        perror("send failed");
-        close(fd);
-        return false;
-    }
-    return true;
-} */
-
 bool send_response(int fd, char *message, enum StatusCode status_code) {
     struct packet pkt;
     pkt.status_code = htonl(status_code);
