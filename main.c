@@ -117,7 +117,7 @@ int main() {
                             nplayers++;
                             printf("DEBUG: Player %s connected. Total players: %d\n", new_player.username, nplayers);
                             // Send welcome message
-                           send_response(client_fd, welcome_msg, OK); 
+                            send_response(client_fd, welcome_msg, OK); 
                             break;
                         }
                     }
