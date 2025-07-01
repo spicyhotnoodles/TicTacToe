@@ -26,8 +26,7 @@ class UIManager:
     def menu(self):
         self.clear()
         self.title()
-        for i, opt in enumerate(self.menu_options, 1):
-            print(f"{i}. {opt}".center(self.cols))
+        return self.display_list(self.menu_options, prompt="Enter your choice: ")
 
     def credits(self):
         self.clear()
@@ -37,7 +36,6 @@ class UIManager:
         print("Version: 1.0.0".center(self.cols))
         print("=" * self.cols)
         input("Press Enter to return to the menu...")
-        self.menu()
 
     def game_list(self, games):
         print("Available Games:".center(self.cols))
@@ -48,6 +46,15 @@ class UIManager:
         self.clear()
         print(message.center(self.cols))
         uinput = input(default_action)
-        self.menu()
         return uinput
-
+    
+    def display_list(self, items, title=None, prompt="Press Enter to continue..."):
+        if title:
+            self.clear()
+            print(title.center(self.cols))
+        if not items:
+            print("No items available.".center(self.cols))
+        else:
+            for i, item in enumerate(items, 1):
+                print(f"{i}. {item}".center(self.cols))
+        return input(prompt)
