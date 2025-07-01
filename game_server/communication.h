@@ -8,4 +8,7 @@
 bool send_response(int fd, char *message, enum StatusCode status_code);
 void handle_request(int fd, enum Requests request);
 
+__attribute__((overloadable)) bool send(int *integer, int fd);
+__attribute__((overloadable)) bool send(char *string, int fd);
+
 #endif
