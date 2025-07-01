@@ -1,47 +1,43 @@
 from .communication import CommunicationManager
-from .protocol import RequestType
 from .game import GameManager
 from .ui import UIManager
-from queue import Queue, Empty
-import sys
-import select
-import tty
-import termios
-
-"""def input():
-    return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])"""
+from queue import Queue
 
 class App:
-
     def __init__(self):
         print("Initializing the game client...")
-        self.game = GameManager()
-        self.communication = CommunicationManager(self.game)
-        self.ui = UIManager()
         self.queue = Queue()
+        self.game = GameManager()
+        self.ui = UIManager()
+        self.communication = CommunicationManager(self.game)
         print("Game client initialized successfully.")
 
     def run(self):
         while True:
             try:
+                # 🔔 Check for guest join notifications
+                while not self.queue.empty():
+                    game_id, guest_name = self.queue.get()
+                    self.ui.alert(f"'{guest_name}' wants to join your game {game_id}.", "Accept (y/n)? ")
                 choice = self.ui.menu()
                 match choice:
                     case "1":
-                        self.communication.handle_request(RequestType.NEWGAME, self.queue)
+                        self.game.new_game(self.communication, self.queue)
+                        pass
                     case "2":
-                        self.communication.handle_request(RequestType.JOINGAME, self.queue)
+                        self.game.join_game(self.communication, self.queue)
+                        pass
                     case "3":
-                        self.ui.display_list(self.game.hosted_games, title="Your Active Games", prompt="Press Enter to continue...")
+                        self.game.my_games()
+                        pass
                     case "4":
                         self.ui.credits()
+                        pass
                     case "5":
                         print("Logging out...")
-                        self.communication.handle_request(RequestType.LOGOUT)
                         break
                     case _:
-                        print("Invalid choice, please try again.")
+                        print("Invalid choice.")
             except KeyboardInterrupt:
                 print("\nExiting the game client...")
                 break
-            finally:
-                pass

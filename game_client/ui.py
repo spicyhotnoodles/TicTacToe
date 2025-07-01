@@ -8,10 +8,10 @@ class UIManager:
         self.cols = shutil.get_terminal_size().columns
         self.menu_options = ["New Game", "Join Game", "My Games", "Credits", "Logout"]
 
-    def clear(self):
+    def __clear(self):
         os.system('cls' if os.name == 'nt' else 'clear')
 
-    def title(self):
+    def __title(self):
         art = [
             "  ████████╗██╗ ██████╗    ████████╗ █████╗  ██████╗    ████████╗ ██████╗ ███████╗",
             "  ╚══██╔══╝██║██╔════╝    ╚══██╔══╝██╔══██╗██╔════╝    ╚══██╔══╝██╔═══██╗██╔════╝",
@@ -24,12 +24,12 @@ class UIManager:
             print(line.center(self.cols))
 
     def menu(self):
-        self.clear()
-        self.title()
+        self.__clear()
+        self.__title()
         return self.display_list(self.menu_options, prompt="Enter your choice: ")
 
     def credits(self):
-        self.clear()
+        self.__clear()
         print("Game Client - Credits".center(self.cols))
         print("=" * self.cols)
         print("Developed by: Pietro Ciuci and Michele Esito".center(self.cols))
@@ -38,7 +38,7 @@ class UIManager:
         input("Press Enter to return to the menu...")
 
     def alert(self, message, default_action="Press Enter to continue..."):
-        self.clear()
+        self.__clear()
         print(message.center(self.cols))
         uinput = input(default_action)
         return uinput
@@ -49,7 +49,7 @@ class UIManager:
     
     def display_list(self, items, title=None, prompt="Press Enter to continue..."):
         if title:
-            self.clear()
+            self.__clear()
             print(title.center(self.cols))
         if not items:
             print("No items available.".center(self.cols))
