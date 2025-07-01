@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "hash.h"
+#include "game.h"
 
 // Function prototypes for communication handling
 bool send_response(int fd, char *message, enum StatusCode status_code);
