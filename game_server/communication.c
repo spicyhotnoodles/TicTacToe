@@ -112,6 +112,7 @@ void handle_request(int fd, enum Requests request) {
                     guest->games[guest->ngames++] = &games[game_index]; // Add game to guest's list
                     printf("DEBUG: Player %s joined game with ID %d hosted by %s.\n", guest->username, game_id, host->username);
                     send_response(fd, "Joined game successfully", OK);
+                    //TODO: Implement start game logic
                 } else {
                     // Host denied the join request
                     printf("DEBUG: Player %s denied join request for game ID %d.\n", host->username, game_id);

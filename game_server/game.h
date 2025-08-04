@@ -15,4 +15,11 @@ char *get_game_list(struct player *player);
 
 void create_game(int fd);
 
+void start_game(int fd, struct player *guest, int game_index);
+
+/// @brief If a player is playing a game, lock all other games for that player.
+/// @param player The player whose games should be locked.
+/// @note This function is used to prevent a player from playing multiple games at the same time
+void lock_games(struct player *player);
+
 #endif

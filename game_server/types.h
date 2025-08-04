@@ -12,6 +12,25 @@
 
 #include "config.h"
 
+enum Requests {
+    NEWGAME,
+    JOINGAME,
+    REMATCH,
+    LOGOUT
+};
+
+enum StatusCode {
+    OK,
+    ERROR,
+    DENIED
+};
+
+enum GameStatus {
+    WAITING_FOR_GUEST,
+    IN_PROGRESS,
+    LOCKED
+};
+
 // Ensure structure is tightly packed (no padding)
 #pragma pack(push, 1)
 struct packet {
@@ -27,6 +46,7 @@ struct game {
     int id;
     struct player *host;
     struct player *guest;
+    enum GameStatus status;
 };
 
 struct player {
@@ -40,19 +60,6 @@ struct player_table_entry {
     int fd;
     struct player data;
     bool in_use;
-};
-
-enum Requests {
-    NEWGAME,
-    JOINGAME,
-    REMATCH,
-    LOGOUT
-};
-
-enum StatusCode {
-    OK,
-    ERROR,
-    DENIED
 };
 
 extern int ngames; // Global variable to track the number of games

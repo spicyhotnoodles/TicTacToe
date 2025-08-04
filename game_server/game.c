@@ -21,3 +21,26 @@ char *get_game_list(struct player *player) {
     }
     return game_list;
 }
+
+void create_game(int fd) {
+    
+}
+
+void start_game(int fd, struct player *guest, int game_index) {
+    struct game *game = &games[game_index];
+    game->guest = guest;
+    game->status = IN_PROGRESS; // Set the game status to in progress
+    lock_games(game->host); // Lock all other games for the host
+    lock_games(guest); // Lock all other games for the guest
+    printf("DEBUG: Game with ID %d started between %s and %s.\n", game->id, game->host->username, guest->username);
+    //TODO: Implement game logic here
+}
+
+void lock_games(struct player *player) {
+    for (int i = 0; i < player->ngames; i++) {
+        if (player->games[i] != NULL) {
+            player->games[i]->status = LOCKED; // Lock the game
+        }
+    }
+    printf("DEBUG: All games for player %s have been locked.\n", player->username);
+}
