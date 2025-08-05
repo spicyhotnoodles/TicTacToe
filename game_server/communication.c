@@ -23,26 +23,6 @@ bool send_data(void *data, size_t size, int fd) {
     return true;
 }
 
-/* __attribute__((overloadable)) bool send(int *integer, int fd) {
-    ssize_t bytes_sent = send(fd, &integer, sizeof(int), 0);
-    if (bytes_sent < 0) {
-        perror("send failed");
-        close(fd);
-        return false;
-    }
-    return true;
-}
-
-__attribute((overloadable)) bool send(char *string, int fd) {
-    ssize_t bytes_sent = send(fd, string, strlen(string), 0);
-    if (bytes_sent < 0) {
-        perror("send failed");
-        close(fd);
-        return false;
-    }
-    return true;
-} */
-
 void handle_request(int fd, enum Requests request) {
     switch (request) {
         case NEWGAME:
