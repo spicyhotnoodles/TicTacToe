@@ -13,6 +13,16 @@ bool send_response(int fd, char *message, enum StatusCode status_code) {
     return true;
 }
 
+bool send_data(void *data, size_t size, int fd) {
+    ssize_t bytes_sent = send(fd, data, size, 0);
+    if (bytes_sent < 0) {
+        perror("send failed");
+        close(fd);
+        return false;
+    }
+    return true;
+}
+
 __attribute__((overloadable)) bool send(int *integer, int fd) {
     ssize_t bytes_sent = send(fd, &integer, sizeof(int), 0);
     if (bytes_sent < 0) {
@@ -89,12 +99,13 @@ void handle_request(int fd, enum Requests request) {
                     return;
                 }
                 game_id = ntohl(game_id); // Convert to host byte order
+                printf("DEBUG: Player %s requested to join game ID %d.\n", guest->username, game_id);
                 int game_index = get_game_index(game_id);
                 // Ask host approval for the join request
                 struct player *host = games[game_index].host;
                 char buffer[MAX_MSG_LEN];
                 snprintf(buffer, sizeof(buffer), "%d;%s", game_id, guest->username);
-                if (!send(buffer, host->fd)) {
+                if (!send_data(buffer, sizeof(buffer), host->fd)) {
                     fprintf(stderr, "DEBUG: Failed to notify host.\n");
                     return;
                 }

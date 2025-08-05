@@ -11,5 +11,6 @@ void handle_request(int fd, enum Requests request);
 
 __attribute__((overloadable)) bool send(int *integer, int fd);
 __attribute__((overloadable)) bool send(char *string, int fd);
+bool send_data(void *data, size_t size, int fd);
 
 #endif
