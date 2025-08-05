@@ -23,7 +23,7 @@ bool send_data(void *data, size_t size, int fd) {
     return true;
 }
 
-__attribute__((overloadable)) bool send(int *integer, int fd) {
+/* __attribute__((overloadable)) bool send(int *integer, int fd) {
     ssize_t bytes_sent = send(fd, &integer, sizeof(int), 0);
     if (bytes_sent < 0) {
         perror("send failed");
@@ -41,7 +41,7 @@ __attribute((overloadable)) bool send(char *string, int fd) {
         return false;
     }
     return true;
-}
+} */
 
 void handle_request(int fd, enum Requests request) {
     switch (request) {
@@ -104,8 +104,8 @@ void handle_request(int fd, enum Requests request) {
                 // Ask host approval for the join request
                 struct player *host = games[game_index].host;
                 char buffer[MAX_MSG_LEN];
-                snprintf(buffer, sizeof(buffer), "%d;%s", game_id, guest->username);
-                if (!send_data(buffer, sizeof(buffer), host->fd)) {
+                int len = snprintf(buffer, sizeof(buffer), "%d;%s", game_id, guest->username);
+                if (!send_data(buffer, len, host->fd)) {
                     fprintf(stderr, "DEBUG: Failed to notify host.\n");
                     return;
                 }
