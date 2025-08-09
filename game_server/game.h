@@ -13,7 +13,7 @@ int get_game_index(int game_id);
 /// @return A string containing the list of games, formatted as "Game ID: <id>, Host: <username>\n" if there are games available (without guests and not hosted by the player), and an empty string if no games are available.
 char *get_game_list(struct player *player);
 
-void create_game(int fd);
+int create_game(int fd, struct player *host);
 
 void start_game(int fd, struct player *guest, int game_index);
 

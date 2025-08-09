@@ -22,8 +22,16 @@ char *get_game_list(struct player *player) {
     return game_list;
 }
 
-void create_game(int fd) {
-    
+int create_game(int fd, struct player *host) {
+    struct game new_game;
+    new_game.id = random_id(fd); // Generate a unique game ID
+    new_game.host = host; // Set the host player
+    new_game.guest = NULL; // Initially no guest
+    new_game.status = WAITING_FOR_GUEST; // Set initial status
+    games[ngames] = new_game; // Add to the games array
+    host->games[host->ngames++] = &games[ngames++]; // Add game to player's list
+    printf("DEBUG: New game with ID %d created by player %s.\n", new_game.id, host->username);
+    return new_game.id;
 }
 
 void start_game(int fd, struct player *guest, int game_index) {
