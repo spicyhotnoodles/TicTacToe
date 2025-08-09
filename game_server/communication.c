@@ -33,19 +33,11 @@ void handle_request(int fd, enum Requests request) {
                 struct player *host = player_get(fd);
 				// Check if the host player exists and has space for a new game
                 if (host && host->ngames < MAX_GAMES_PER_PLAYER) {
-                    //int new_game_id = create_game(fd);
-                    struct game new_game;
-                    new_game.id = random_id(fd);
-                    new_game.host = host; // Get the player from the table
-                    new_game.guest = NULL; // Initially no guest
-                    games[ngames] = new_game; // Add to the games array
-                    host->games[host->ngames++] = &games[ngames++]; // Add game to player's list
-                    printf("DEBUG: New game created with ID %d by player %s.\n", new_game.id, new_game.host->username);
+                    int game_id = create_game(fd, host);
                     // Send confirmation response providing the new game ID
 					char msg[64];
-					snprintf(msg, sizeof(msg), "%u", new_game.id);
+					snprintf(msg, sizeof(msg), "%u", game_id);
 					send_response(fd, msg, OK);
-					//TODO: Implement waiting for a guest to join the game
 				 } else {
 					fprintf(stderr, "DEBUG: Player does not exist or has reached max games.\n");
 					send_response(fd, "Cannot create new game", ERROR);
@@ -70,48 +62,14 @@ void handle_request(int fd, enum Requests request) {
 				}
                 // All good send confirmation response with the list of games
 				send_response(fd, list_msg, OK);
-                // Wait for guest to select a game
-                int game_id;
-                ssize_t bytes_received = recv(fd, &game_id, sizeof(game_id), 0);
-                if (bytes_received <= 0) {
-                    perror("recv failed or connection closed");
-                    close(fd);
-                    return;
-                }
-                game_id = ntohl(game_id); // Convert to host byte order
-                printf("DEBUG: Player %s requested to join game ID %d.\n", guest->username, game_id);
-                int game_index = get_game_index(game_id);
-                // Ask host approval for the join request
-                struct player *host = games[game_index].host;
-                char buffer[MAX_MSG_LEN];
-                int len = snprintf(buffer, sizeof(buffer), "%d;%s", game_id, guest->username);
-                if (!send_data(buffer, len, host->fd)) {
-                    fprintf(stderr, "DEBUG: Failed to notify host.\n");
-                    return;
-                }
-                // Wait for host's response
-                char response[1];
-                bytes_received = recv(host->fd, response, sizeof(response), 0);
-                if (bytes_received <= 0) {
-                    perror("recv failed or connection closed");
-                    close(host->fd);
-                    return;
-                }
-                if (response[0] == 'y' || response[0] == 'Y') {
-                    // Host accepted the join request
-                    games[game_index].guest = guest; // Set the guest in the game
-                    guest->games[guest->ngames++] = &games[game_index]; // Add game to guest's list
-                    printf("DEBUG: Player %s joined game with ID %d hosted by %s.\n", guest->username, game_id, host->username);
-                    send_response(fd, "Joined game successfully", OK);
-                    //TODO: Implement start game logic
-                } else {
-                    // Host denied the join request
-                    printf("DEBUG: Player %s denied join request for game ID %d.\n", host->username, game_id);
-                    send_response(fd, "Join request denied by host", DENIED);
-                }
+                // TODO
+                /* Next steps:
+                 1. Wait for guest to send the game ID they want to join
+                 2. Send a notification to the host of the game
+                 3. If the host approves, start the game
+                 4. If the host denies, send a denial response to the guest */
             } else {
-                // Send error response packet
-                send_response(fd, "No active games to join", ERROR);
+                send_response(fd, "No active games available", ERROR);
             }
             break;
         case REMATCH:
