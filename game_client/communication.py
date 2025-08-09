@@ -2,6 +2,8 @@ from .protocol import RequestType, ResponseType
 from .config import SERVER_IP, SERVER_PORT
 import struct
 import socket
+import queue
+import threading
 
 class CommunicationManager:
 
@@ -9,12 +11,15 @@ class CommunicationManager:
         self.fmt = 'I256s'
         self.pack_size = struct.calcsize(self.fmt)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.message_queue = queue.Queue()
+        self.dispatcher_thread = threading.Thread(target=self.__dispatcher, daemon=True)
         self.connect()
 
     """ Connect to the game server """
     def connect(self):
         print(f"Connecting to server at {SERVER_IP}:{SERVER_PORT}...")
         self.sock.connect((SERVER_IP, SERVER_PORT))
+        self.dispatcher_thread.start()
         message, status = self.__receive_response()
         if status == ResponseType.ERROR:
             print(f"Connection failed: {message}")
@@ -65,7 +70,7 @@ class CommunicationManager:
     """ Receive a response from the server, ensuring the data is complete """
     def __receive_response(self):
         try:
-            data = self.receive_data(self.pack_size)
+            data = self.message_queue.get()
             if data is None:
                 print("No data received")
                 raise ConnectionError("No data received from the server.")
@@ -77,3 +82,9 @@ class CommunicationManager:
         except Exception as e:
             print(f"Error receiving response: {e}")
             exit(1)
+
+    def __dispatcher(self):
+        while True:
+            data = self.receive_data()
+            if data:
+                self.message_queue.put(data)
