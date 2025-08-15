@@ -1,89 +1,161 @@
 #include "communication.h"
 
-bool send_response(int fd, char *message, enum StatusCode status_code) {
-    struct packet pkt;
-    pkt.status_code = htonl(status_code);
-    strncpy(pkt.message, message, MAX_MSG_LEN - 1);
-    pkt.message[MAX_MSG_LEN - 1] = '\0'; // Ensure null termination
-    if (send(fd, &pkt, sizeof(pkt), 0) < 0) {
-        perror("send failed");
-        close(fd);
+/// @brief Attempts to serialize a message_t object and send it over a file descriptor `fd` while also handling memory cleanup for the serialized data.
+/// @param fd The file descriptor to which send the message
+/// @param message The message to be sent
+/// @return true on success and false if serialization fails, sending fails, or an error occurs. 
+bool send_message(int fd, message_t *message) {
+    char *serialized = message_serialize(message);
+    if (!serialized) {
+        fprintf(stderr, "Error! message_serialize failed.\n");
         return false;
     }
-    return true;
+    if (send(fd, serialized, strlen(serialized), 0) > 0) { return true; }
+    return false;
 }
 
-bool send_data(void *data, size_t size, int fd) {
-    ssize_t bytes_sent = send(fd, data, size, 0);
-    if (bytes_sent < 0) {
-        perror("send failed");
+/// @brief Reads data from a file descriptor `fd` using the `recv` system call, processes the received data as a JSON string, and parses it into a `message_t` structure.
+/// @param fd The file descriptor to receive the message from
+/// @return A `message_t` object if receiving and parsing were successfull, `NULL` otherwise.
+message_t * receive_message(int fd) {
+    char buffer[BUFFER_SIZE];
+    ssize_t bytes = recv(fd, buffer, BUFFER_SIZE-1, 0);
+    if (bytes <= 0) {
+        if (bytes == 0) {
+            printf("Client disconnected\n");
+        } else {
+            perror("Failed recv");
+        }
         close(fd);
-        return false;
+        return NULL;
     }
-    return true;
+    buffer[bytes] = '\0';
+    // Parse JSON in message_t struct
+    message_t *msg = message_parse(buffer);
+    if (!msg) {
+        fprintf(stderr, "Invalid JSON from fd %d: %s\n", fd, buffer);
+        return NULL;
+    }
+    return msg;
 }
 
-void handle_request(int fd, enum Requests request) {
-    switch (request) {
-        case NEWGAME:
-            // Handle new game request
-            printf("DEBUG: Handling new game request.\n");
-            // Implementation for new game request
-            if (ngames < MAX_GAMES) {
-                struct player *host = player_get(fd);
-				// Check if the host player exists and has space for a new game
-                if (host && host->ngames < MAX_GAMES_PER_PLAYER) {
-                    int game_id = create_game(fd, host);
-                    // Send confirmation response providing the new game ID
-					char msg[64];
-					snprintf(msg, sizeof(msg), "%u", game_id);
-					send_response(fd, msg, OK);
-				 } else {
-					fprintf(stderr, "DEBUG: Player does not exist or has reached max games.\n");
-					send_response(fd, "Cannot create new game", ERROR);
-				}
+/// @brief Processes client requests based on the specified method in the request object. It constructs appropriate responses, manages server and player state, and ensures proper memory handling and communication with clients.
+/// @param fd The file descriptor of the requesting client
+/// @param request The parsed message from the client
+void handle_request(int fd, message_t *request) {
+    message_t response;
+    response.payload = cJSON_CreateObject(); // Free memory after sending message!
+    if (strcmp(request->method, "login") == 0) {
+        printf("DEBUG: Client requested login\n");
+        char username[17];
+        memset(username, 0, sizeof(username));
+        strncpy(username, cJSON_GetObjectItem(request->payload, "username")->valuestring, sizeof(username) - 1);
+        username[sizeof(username) - 1] = '\0'; // Ensure null-termination
+        printf("DEBUG: Received username [%s]\n", username);
+        if (username_exists(username)) {
+            printf("DEBUG: Username [%s] already in use.\n", username);
+            response.status_code = ERROR;
+            cJSON_AddStringToObject(response.payload, "message", "Username already in use. Choose another one!");
+        } else {
+            printf("DEBUG: Username [%s] is available.\n", username);
+            struct player new_player;
+            new_player.fd = fd;
+            strncpy(new_player.username, username, sizeof(new_player.username) - 1);
+            new_player.username[sizeof(new_player.username) - 1] = '\0'; // Ensure null-termination
+            new_player.ngames = 0;
+            printf("DEBUG: Player %s with file descriptor %d initilized\n", username, fd);
+            player_add(new_player);
+            fds[nfds - 1].fd = new_player.fd;
+            nplayers++;
+            printf("DEBUG: Player %s connected. Total players: %d\n", new_player.username, nplayers);
+            response.status_code = OK;
+            cJSON_AddStringToObject(response.payload, "message", "Login succesful!");
+        }
+    } else if (strcmp(request->method, "new_game") == 0) {
+        printf("DEBUG: Client requested new game creation\n");
+        if (ngames < MAX_GAMES) {
+            struct player *host = player_get(fd);
+            if (host->ngames < MAX_GAMES_PER_PLAYER) {
+                int game_id = create_game(fd, host);
+                response.status_code = OK;
+                cJSON_AddNumberToObject(response.payload, "game_id", game_id);
             } else {
-                // Send error response packet
-                send_response(fd, "Max number of games reached", ERROR);
+                response.status_code = ERROR;
+                cJSON_AddStringToObject(response.payload, "message", "Max number of games available for selected player reached!");
             }
-            break;
-        case JOINGAME:
-            // Handle join game request
-            printf("DEBUG: Handling join game request.\n");
-            if (ngames > 0) {
-				char list_msg[MAX_MSG_LEN];
-				struct player *guest = player_get(fd);
-                // Get list of games available to join (games without guests and not hosted by the guest)
-				strncpy(list_msg, get_game_list(guest), MAX_MSG_LEN - 1);
-				if (strlen(list_msg) == 0) {
-					strncpy(list_msg, "No active games available", MAX_MSG_LEN - 1);
-					send_response(fd, list_msg, ERROR);
-					break;
-				}
-                // All good send confirmation response with the list of games
-				send_response(fd, list_msg, OK);
-                // TODO
-                /* Next steps:
-                 1. Wait for guest to send the game ID they want to join
-                 2. Send a notification to the host of the game
-                 3. If the host approves, start the game
-                 4. If the host denies, send a denial response to the guest */
+        } else {
+            response.status_code = ERROR;
+            cJSON_AddStringToObject(response.payload, "message", "Max number of games available for the server reached!");
+        }
+    } else if (strcmp(request->method, "get_games_list") == 0) {
+        struct player *guest = player_get(fd);
+        cJSON *game_list = create_game_list(guest);
+        cJSON *array = cJSON_GetObjectItem(game_list, "games_list");
+        int count = cJSON_GetArraySize(array);
+        if (count == 0) {
+            response.status_code = ERROR;
+            cJSON_AddStringToObject(response.payload, "message", "No active games available");
+            cJSON_Delete(game_list);
+        } else {
+            response.status_code = OK;
+            response.payload = game_list;
+        }
+    } else if (strcmp(request->method, "send_join_request") == 0) {
+        printf("Got join game request\n");
+        struct player *player = player_get(fd);
+        int id = cJSON_GetObjectItem(request->payload, "game_id")->valueint;
+        struct game *game = get_game(id);
+        if (!game->guest && game->status == WAITING_FOR_GUEST) {
+            struct player *host = game->host;
+            message_t notification;
+            notification.payload = cJSON_CreateObject();
+            notification.status_code = OK;
+            cJSON *info = cJSON_CreateObject();
+            cJSON_AddStringToObject(info, "user", player->username);
+            cJSON_AddNumberToObject(info, "game_id", id);
+            cJSON_AddItemToObject(notification.payload, "notification", info);
+            if (send_message(host->fd, &notification)) {
+                response.status_code = OK;
+                cJSON_AddStringToObject(response.payload, "message", "Request successfully delivered! Wait for host approval...");
             } else {
-                send_response(fd, "No active games available", ERROR);
+                response.status_code = ERROR;
+                cJSON_AddStringToObject(response.payload, "message", "Cannot complete request: cannot deliver message to host");
             }
-            break;
-        case REMATCH:
-            // Handle rematch request
-            printf("DEBUG: Handling rematch request.\n");
-            // Implementation for rematch request
-            break;
-        case LOGOUT:
-            // Handle logout request
-            printf("DEBUG: Handling logout request.\n");
-            // Implementation for logout request
-            break;
-        default:
-            fprintf(stderr, "DEBUG: Unknown request received.\n");
-            break;
-	}
+            cJSON_Delete(notification.payload);
+        } else {
+            response.status_code = ERROR;
+            cJSON_AddStringToObject(response.payload, "message", "Cannot complete request: game is unavailable!");
+        }
+    } else if (strcmp(request->method, "start_game") == 0) {
+        printf("Got start game request\n");
+        if (request->payload) {
+            // TODO
+        } else {
+            fprintf(stderr, "Error! payload item is NULL\n");
+            response.status_code = ERROR;
+            cJSON_AddStringToObject(response.payload, "message", "Cannot complete request: game ID was not specified!");
+        }
+    } else if (strcmp(request->method, "send_join_rejection") == 0) {
+        cJSON *id_item = cJSON_GetObjectItem(request->payload, "game_id");
+        int index = get_game_index(id_item->valueint);
+        struct game game = games[index];
+        message_t message;
+        message.payload = cJSON_CreateObject();
+        message.status_code = ERROR;
+        cJSON_AddStringToObject(message.payload, "message", "Host denied your request");
+        if (!send_message(game.guest->fd, &message)) { printf("Could not deliver message to guest"); }
+        game.guest = NULL;
+        game.status = WAITING_FOR_GUEST;
+        response.status_code = OK;
+        cJSON_AddStringToObject(response.payload, "message", "");
+        if (!send_message(fd, &response)) { printf("Could not deliver message to host"); }
+        free(response.payload);
+        free(message.payload);        
+    } 
+    else if (strcmp(request->method, "make_move") == 0) {
+
+    }
+    // Finally send response
+    if (!send_message(fd, &response)) { printf("DEBUG: Could not send message to fd: %d", fd); }
+    cJSON_Delete(response.payload);
 }

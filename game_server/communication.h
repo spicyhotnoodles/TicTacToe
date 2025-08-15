@@ -3,12 +3,12 @@
 
 #include "types.h"
 #include "hash.h"
+#include "json.h"
 #include "game.h"
 
 // Function prototypes for communication handling
-bool send_response(int fd, char *message, enum StatusCode status_code);
-void handle_request(int fd, enum Requests request);
-
-bool send_data(void *data, size_t size, int fd);
+void handle_request(int fd, message_t *message);
+bool send_message(int fd, message_t *message);
+message_t * receive_message(int fd);
 
 #endif
