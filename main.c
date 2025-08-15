@@ -23,8 +23,6 @@ int main() {
     struct sockaddr_in servaddr, cliaddr;
     socklen_t clilen;
 
-    int request;
-
     // Create socket
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("socket creation failed");
@@ -75,80 +73,59 @@ int main() {
                 close(server_fd);
                 exit(EXIT_FAILURE);
             }
+            message_t message;
+            cJSON *tmp = cJSON_CreateObject();
+            bool outcome;
             if (nplayers < MAX_PLAYERS) {
-                printf("Connection accepted from %s:%d\n",
-                       inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
-                if (!send_response(client_fd, welcome_msg, OK)) {
-                    continue; // If sending the welcome message fails, skip to the next iteration
-                }
+                printf("DEBUG: Connection accepted from %s:%d\n", inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
+                cJSON_AddStringToObject(tmp, "message", welcome_msg);
+                message.status_code = OK;
+                message.payload = tmp;
                 fds[nfds].fd = client_fd;
                 fds[nfds].events = POLLIN;
                 nfds++;
-                char username[17];
-                printf("DEBUG: Waiting for username input...\n");
-                while (true) {
-                    memset(username, 0, sizeof(username));
-                    ssize_t bytes_read = read(client_fd, username, sizeof(username));
-                    printf("Received %zd bytes from client.\n", bytes_read);
-                    if (bytes_read < 0) {
-                        perror("read failed");
-                        close(client_fd);
-                    } else {
-                        // Check if username is already taken
-                        //strncpy(username, username, bytes_read - 1); // Exclude null terminator
-                        printf("DEBUG: Username received: %s\n", username);
-                         if (username_exists(username)) {
-                            printf("DEBUG: Username [%s] already exists.\n", username);
-                            // Send error response with packet
-                           if (!send_response(client_fd, "Username already exists", ERROR)) {
-                                break; // If sending the error message fails, break out of the loop
-                           }
-                        } else {
-                            // Initialize player
-                            struct player new_player;
-                            new_player.fd = client_fd;
-                            strncpy(new_player.username, username, sizeof(new_player.username) - 1);
-                            new_player.username[sizeof(new_player.username) - 1] = '\0'; // Ensure null termination
-                            new_player.ngames = 0; // Initialize number of games
-                            printf("DEBUG: Player initialized: %s\n", new_player.username);
-                            // Add player to the list
-                            player_add(new_player);
-                            fds[nfds - 1].fd = new_player.fd; // Update the fd
-                            nplayers++;
-                            printf("DEBUG: Player %s connected. Total players: %d\n", new_player.username, nplayers);
-                            // Send welcome message
-                            send_response(client_fd, welcome_msg, OK); 
-                            break;
-                        }
-                    }
-                }
+                outcome = send_message(client_fd, &message);
             } else {
                 fprintf(stderr, "DEBUG: Max players reached. Connection refused.\n");
-                // Send error response packet
-                send_response(client_fd, error_msg, ERROR);
+                cJSON_AddStringToObject(tmp, "message", error_msg);
+                message.status_code = ERROR;
+                message.payload = tmp;
+                outcome = send_message(client_fd, &message);
                 close(client_fd);
-                continue;
             }
-        } 
-
+            cJSON_Delete(message.payload);
+            if (!outcome) {
+                printf("DEBUG: Failed to send welcome message to client %d\n", client_fd);
+                continue;
+            } else {
+                printf("DEBUG: Welcome message sent to client %d\n", client_fd);
+            }
+        }
         // Check for data from clients
         for (int i = 1; i < nfds; i++) {
             if (fds[i].revents & POLLIN) {
-                ssize_t bytes_received = recv(fds[i].fd, &request, sizeof(request), 0);
-                if (bytes_received <= 0) {
-                    // Client disconnected or error
-                    perror("recv failed or connection closed");
-                    close(fds[i].fd);
-                    fds[i] = fds[nfds - 1]; // Replace with last entry
+                int fd = fds[i].fd;
+                message_t *message = receive_message(fd);
+                if (message) {
+                    handle_request(fd, message);
+                } else {
+                    printf("DEBUG: client with fd %d has disconnected\n", fd);
+                    // Remove client from pollfd array
+                    close(fd);
+                    for (int j = i; j < nfds - 1; j++) {
+                        fds[j] = fds[j + 1];
+                    }
                     nfds--;
+                    // Remove player from player_table
+                    player_remove(fd);
                     nplayers--;
-                    continue;
+                    // Optionally, clean up any games involving this player
+                    // cleanup_games_for_player(fd);
+                    // Adjust loop index since we shifted fds
+                    i--;
                 }
-                printf("DEBUG: Received request %d from player with fd %d\n", ntohl(request), fds[i].fd);
-                handle_request(fds[i].fd, ntohl(request)); // Handle the request
             }
-        } 
-
+        }
     }
     close(client_fd);
     close(server_fd);
