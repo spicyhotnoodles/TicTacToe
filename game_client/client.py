@@ -13,9 +13,10 @@ class App:
     def run(self):
         while True:
             try:
+                # Might put this into GameManager.my_games()
                 while not self.notification_queue.empty():
-                    game_id, guest_name = self.notification_queue.get()
-                    self.ui.alert(f"'{guest_name}' wants to join your game #{game_id}. Head to 'My Games' to start playing!")
+                    notification = self.notification_queue.get()
+                    self.ui.alert(f" User {notification['payload']['notification']['user']} would like to join your game #{notification['payload']['notification']['game_id']}")
                 choice = self.ui.menu()
                 match choice:
                     case "1":
