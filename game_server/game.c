@@ -1,27 +1,38 @@
 #include "game.h"
 
-int get_game_index(int game_id) {
+/// @brief Retrieves a game by its ID.
+/// @param game_id The ID of the game to retrieve.
+/// @return A pointer to the game structure if found, NULL otherwise.
+struct game *get_game(int game_id) {
     for (int i = 0; i < ngames; i++) {
         if (games[i].id == game_id) {
-            return i;
+            return &games[i];
         }
     }
-    return -1; // Game not found
+    return NULL;
 }
 
-char *get_game_list(struct player *player) {
-    static char game_list[MAX_MSG_LEN];
-    game_list[0] = '\0'; // Initialize the string
+/// @brief Creates a JSON list of all games for a player.
+/// @param player The player whose games should be listed.
+/// @return A JSON object containing the list of games.
+cJSON *create_game_list(struct player *player) {
+    cJSON *list = cJSON_CreateObject();
+    cJSON *array = cJSON_AddArrayToObject(list, "games_list");
     for (int i = 0; i < ngames; i++) {
-        if (games[i].guest == NULL && games[i].host != player) { // Only list games without guests
-			char game_info[64];
-			snprintf(game_info, sizeof(game_info), "Game ID: %d, Host: %s\n", games[i].id, games[i].host->username);
-			strncat(game_list, game_info, sizeof(game_list) - strlen(game_list) - 1);
-		}
+        if (games[i].guest == NULL && games[i].host != player) {
+            cJSON *game = cJSON_CreateObject();
+            cJSON_AddNumberToObject(game, "game_id", games[i].id);
+            cJSON_AddStringToObject(game, "host", games[i].host->username);
+            cJSON_AddItemToArray(array, game);
+        }
     }
-    return game_list;
+    return list;
 }
 
+/// @brief Creates a new game.
+/// @param fd The file descriptor of the host player.
+/// @param host The player who is hosting the game.
+/// @return The ID of the newly created game.
 int create_game(int fd, struct player *host) {
     struct game new_game;
     new_game.id = random_id(fd); // Generate a unique game ID
@@ -34,6 +45,12 @@ int create_game(int fd, struct player *host) {
     return new_game.id;
 }
 
+// TODO
+
+/// @brief Starts a game between two players.
+/// @param fd The file descriptor of the host player.
+/// @param guest The player who is joining the game.
+/// @param game_index The index of the game to start.
 void start_game(int fd, struct player *guest, int game_index) {
     struct game *game = &games[game_index];
     game->guest = guest;
@@ -44,6 +61,8 @@ void start_game(int fd, struct player *guest, int game_index) {
     //TODO: Implement game logic here
 }
 
+/// @brief Locks all games for a player.
+/// @param player The player whose games should be locked.
 void lock_games(struct player *player) {
     for (int i = 0; i < player->ngames; i++) {
         if (player->games[i] != NULL) {
