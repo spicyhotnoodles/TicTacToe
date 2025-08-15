@@ -1,12 +1,5 @@
-from enum import Enum, auto
+from enum import Enum
 
-class RequestType(Enum):
-    NEWGAME = 0
-    JOINGAME = 1
-    REMATCH = 2
-    LOGOUT = 3
-
-class ResponseType(Enum):
-    OK = 0
-    ERROR = 1
-    DENIED = 2
+class Status(Enum):
+    OK = 200
+    ERROR = 400
