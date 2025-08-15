@@ -9,35 +9,36 @@
 #include <arpa/inet.h>
 #include <poll.h>
 #include <time.h>
-
+#include <cjson/cJSON.h>
+#include <errno.h>
 #include "config.h"
 
-enum Requests {
-    NEWGAME,
-    JOINGAME,
-    REMATCH,
-    LOGOUT
-};
+#define BUFFER_SIZE 1024
 
+// HTTP-like status codes
 enum StatusCode {
-    OK,
-    ERROR,
-    DENIED
+    OK = 200,
+    ERROR = 400
 };
 
 enum GameStatus {
-    WAITING_FOR_GUEST,
-    IN_PROGRESS,
+    WAITING_FOR_GUEST, // Game was just created
+    WAITING_FOR_HOST, // A guest player requested to join. If the host rejects them the status turns back to WAIT_FOR_GUEST otherwise turns into IN_PROGRESS
+    IN_PROGRESS, // The game is being played
     LOCKED
 };
 
-// Ensure structure is tightly packed (no padding)
-#pragma pack(push, 1)
-struct packet {
+/*
+    message_t is a structure representing a message, which includes a pointer
+    to a string (method) for specifying an RPC method (used only for request messages), 
+    an integer (status_code) for indicating the status code (used only for response messages),
+    and a pointer to a cJSON object (payload) for holding the message's data.
+*/
+typedef struct {
+    char *method; // RPC method. Optional, for request messages only 
     int status_code;
-    char message[MAX_MSG_LEN];
-};
-#pragma pack(pop)
+    cJSON *payload; // Contains either argumnet for the RPC (request only) or a message to clarify the status code
+} message_t;
 
 // Forward declarations
 struct player;
@@ -68,5 +69,11 @@ extern int nplayers; // Number of players currently connected
 extern int ngames; // Number of games currently active
 extern struct player_table_entry player_table[PLAYER_TABLE_SIZE];
 extern struct game games[MAX_GAMES]; // Array to hold active games
+extern struct player_table_entry player_table[PLAYER_TABLE_SIZE];
+extern struct pollfd fds[MAX_PLAYERS + 1]; // +1 for the server
+extern struct game games[MAX_GAMES]; // Array to hold active games
+extern int nfds; // Number of file descriptors currently in use
+extern int nplayers; // Number of players currently connected
+extern int ngames; // Number of games currently active
 
 #endif
