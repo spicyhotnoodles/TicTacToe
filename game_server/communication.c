@@ -137,15 +137,14 @@ void handle_request(int fd, message_t *request) {
         }
     } else if (strcmp(request->method, "send_join_rejection") == 0) {
         cJSON *id_item = cJSON_GetObjectItem(request->payload, "game_id");
-        int index = get_game_index(id_item->valueint);
-        struct game game = games[index];
+        struct game *game = get_game(id_item->valueint); 
         message_t message;
         message.payload = cJSON_CreateObject();
         message.status_code = ERROR;
         cJSON_AddStringToObject(message.payload, "message", "Host denied your request");
-        if (!send_message(game.guest->fd, &message)) { printf("Could not deliver message to guest"); }
-        game.guest = NULL;
-        game.status = WAITING_FOR_GUEST;
+        if (!send_message(game->guest->fd, &message)) { printf("Could not deliver message to guest"); }
+        game->guest = NULL;
+        game->status = WAITING_FOR_GUEST;
         response.status_code = OK;
         cJSON_AddStringToObject(response.payload, "message", "");
         if (!send_message(fd, &response)) { printf("Could not deliver message to host"); }
