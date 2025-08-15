@@ -1,8 +1,9 @@
 # TicTacToe
 TicTacToe Game
-## How to build
+## How to build the server
 + Build the project locally on your machine:
     ```shell
+    # make sure to have cJSON library installed on your system!
     make && ./build/server
     ```
 + Build with docker:
