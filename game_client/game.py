@@ -11,11 +11,12 @@ class Game:
 
 class GameManager():
 
-    def __init__(self, notification_queue: Queue):
+    def __init__(self):
         """ Initialize the GameManager """
         self.hosted_games = []
         self.ui = UIManager()
-        self.communication = CommunicationManager(notification_queue)
+        self.notification_queue = Queue()
+        self.communication = CommunicationManager(self.notification_queue)
 
     def new_game(self):
         self.communication.send_message("new_game", "null")
@@ -25,6 +26,8 @@ class GameManager():
             game = Game(game_id, None)
             self.hosted_games.append(game)
             self.ui.alert("New game created successfully")
+        else:
+            self.ui.alert(f"Error: {response['payload']['message']}")
 
     """ List of games message format
     
@@ -50,62 +53,84 @@ class GameManager():
     def join_game(self):
         game_list = self.__get_game_list()
         if game_list:
-            while True:
-                print("List of Available Games:")
-                for i, game in enumerate(game_list):
-                    print(f"{i}. Game ID: {game['game_id']}, Host: {game['host']}")
-                try:
-                    uinput = int(input("Select the game you want to join by index: "))
-                    game_id = game_list[uinput]['game_id']
-                    if (self.__send_join_request(game_id)):
-                        # Wait for host
-                        # TODO
-                        print("Success!")
-                        pass
+            items = [f"Game ID: {game['game_id']}, Host: {game['host']}" for game in game_list]
+            uinput = self.ui.display_list(items, title="List of Available Games", prompt="Select the game you want to join by index: ")
+            try:
+                idx = int(uinput) - 1
+                game_id = game_list[idx]['game_id']
+                if self.__send_join_request(game_id):
+                    self.ui.alert("Join request sent successfully. Waiting for host approval...")
+                    response = self.communication.receive_message()
+                    if response['status'] == Status.OK.value:
+                        self.ui.alert("Successfully joined the game.")
+                        # TODO: Implement game logic here
                     else:
-                        return
-                except ValueError:
-                    print("Invalid input! Please try again")
-                except IndexError:
-                    print("Index is out of game list! Please try again.")
+                        self.ui.alert(f"{response['payload']['message']}")
+            except (ValueError, IndexError):
+                print("Invalid input! Please try again")
 
     def my_games(self):
         if not self.hosted_games:
             print("No hosted games.")
-        else:
-            while True:
-                print("My Hosted Games:")
-                for i, game in enumerate(self.hosted_games):
-                    print(f"{i}. Game ID: {game.id}, Guest: {game.guest}")
-                uinput = input("Press 'm' to return to main menu or choose a game by index: ")
-                if uinput.lower() == 'm':
-                    break
-                elif uinput.isdigit():
-                    selected_index = int(uinput)
-                    if selected_index in range(len(self.hosted_games)):
-                        selected_game = self.hosted_games[selected_index]
-                        if not selected_game.guest:
-                            self.ui.alert("No guest has joined this game yet.")
-                            continue
-                        else:
-                            while True:
-                                uinput = input(f"{selected_game.guest} has requested to join this game. Accept? (y/n)")
-                                if uinput.lower() == 'y':
-                                    # Start game
-                                    return
-                                elif uinput.lower() == 'n':
-                                    # Sends rejection
-                                    self.communication.send_message("send_rejection", {"game_id": selected_game.id})
-                                else:
-                                    print("Invalid input! Please enter 'y' or 'n'.")
-                                    continue
-                    else:
-                        print("Index is out of range! Please try again.")
-                else:
-                    print("Enter a valid index or 'm' to return to main menu.")
+            return
+        self._process_notifications()
+        while True:
+            uinput = self._print_hosted_games()
+            if uinput == '9':
+                break
+            if not uinput.isdigit():
+                print("Invalid input! Please try again")
+                continue
+            idx = int(uinput) - 1
+            if idx < 0 or idx >= len(self.hosted_games):
+                print("Index is out of game list! Please try again.")
+                continue
+            selected_game = self.hosted_games[idx]
+            self._handle_guest(selected_game)
+    
 
     # Helper functions:
     
+    def _process_notifications(self):
+        while not self.notification_queue.empty():
+            notification = self.notification_queue.get()
+            game_id = notification['payload']['notification']['game_id']
+            guest_user = notification['payload']['notification']['user']
+            self.ui.alert(f"User {guest_user} would like to join your game #{game_id}")
+            for game in self.hosted_games:
+                if game.id == int(game_id):
+                    game.guest = guest_user
+                    break
+    
+    def _print_hosted_games(self):
+        items = [f"Game ID: {game.id}, Guest: {game.guest}" for game in self.hosted_games]
+        return self.ui.display_list(items, title="My Hosted Games", prompt="Select a game by index (9 to main menu): ")
+    
+    def _handle_guest(self, selected_game):
+        if not selected_game.guest:
+            self.ui.alert("No guest has joined this game yet.")
+            return
+        while True:
+            uinput = self.ui.alert(
+                f"{selected_game.guest} has requested to join this game.",
+                default_action="Accept? (y/n)"
+            )
+            if uinput.lower() == 'y':
+                # TODO: Implement logic game here
+                # Host is starting the game
+                return
+            elif uinput.lower() == 'n':
+                self.communication.send_message("send_join_rejection", {"game_id": selected_game.id})
+                response = self.communication.receive_message()
+                if response['status'] == Status.OK.value:
+                    selected_game.guest = None
+                    self.ui.alert("Rejection sent successfully.")
+                else:
+                    self.ui.alert(f"Error: {response['payload']['message']}")
+                return
+            else:
+                print("Invalid input! Please enter 'y' or 'n'.")
+
     def __get_game_list(self):
         self.communication.send_message("get_games_list", "null")
         response = self.communication.receive_message()

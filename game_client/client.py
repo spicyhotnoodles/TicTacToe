@@ -1,22 +1,16 @@
 from .game import GameManager
 from .ui import UIManager
-from queue import Queue
 
 class App:
     def __init__(self):
         print("Initializing the game client...")
-        self.notification_queue = Queue()
-        self.game = GameManager(self.notification_queue)
+        self.game = GameManager()
         self.ui = UIManager()
         print("Game client initialized successfully.")
 
     def run(self):
         while True:
             try:
-                # Might put this into GameManager.my_games()
-                while not self.notification_queue.empty():
-                    notification = self.notification_queue.get()
-                    self.ui.alert(f" User {notification['payload']['notification']['user']} would like to join your game #{notification['payload']['notification']['game_id']}")
                 choice = self.ui.menu()
                 match choice:
                     case "1":
