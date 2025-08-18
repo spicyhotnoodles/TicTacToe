@@ -2,7 +2,8 @@
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -g -Wall -O2 -Wextra -Igame_server -lcjson
+CFLAGS = -g -Wall -O2 -Wextra -Igame_server
+LDFLAGS = -lcjson
 
 # Sources and build
 SRC = main.c game_server/json.c game_server/communication.c game_server/hash.c game_server/game.c
@@ -15,7 +16,7 @@ all: $(TARGET)
 # Build executable
 $(TARGET): $(OBJ)
 	@mkdir -p build
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 # Clean build artifacts
 clean:
