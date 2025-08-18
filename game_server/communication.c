@@ -106,6 +106,8 @@ void handle_request(int fd, message_t *request) {
         int id = cJSON_GetObjectItem(request->payload, "game_id")->valueint;
         struct game *game = get_game(id);
         if (!game->guest && game->status == WAITING_FOR_GUEST) {
+            game->guest = player; // Set the guest player
+            game->status = WAITING_FOR_HOST; // Update the game status
             struct player *host = game->host;
             message_t notification;
             notification.payload = cJSON_CreateObject();
@@ -146,10 +148,7 @@ void handle_request(int fd, message_t *request) {
         game->guest = NULL;
         game->status = WAITING_FOR_GUEST;
         response.status_code = OK;
-        cJSON_AddStringToObject(response.payload, "message", "");
-        if (!send_message(fd, &response)) { printf("Could not deliver message to host"); }
-        free(response.payload);
-        free(message.payload);        
+        cJSON_AddStringToObject(response.payload, "message", ""); 
     } 
     else if (strcmp(request->method, "make_move") == 0) {
 
