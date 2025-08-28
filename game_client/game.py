@@ -62,7 +62,7 @@ class GameManager():
                     self.ui.display("Join request sent successfully. Waiting for host approval...")
                     response = self.communication.receive_message()
                     if response['status'] == Status.OK.value:
-                        # TODO: Implement game logic here
+                        self.__play_game(game_id)
                     else:
                         self.ui.alert(f"{response['payload']['message']}")
             except (ValueError, IndexError):
@@ -116,6 +116,8 @@ class GameManager():
             )
             if uinput.lower() == 'y':
                 self.communication.send_message("start_game", {"game_id" : selected_game.id})
+                self.__play_game(selected_game.id)
+                self.hosted_games.remove(selected_game)
                 return
             elif uinput.lower() == 'n':
                 self.communication.send_message("send_join_rejection", {"game_id": selected_game.id})
@@ -147,5 +149,28 @@ class GameManager():
         else:
             self.ui.alert(f"Error: {response['payload']['message']}")
             return False
+    
+    def __play_game(self, game_id):
+        while True:
+            # Receive game infos
+            self.ui.display("Waiting for opponent...")
+            data = self.communication.receive_message()
+            # Check if game is over after opponent move
+            if data['payload']['game_state'] != "Game Over":
+                # Make your move
+                while True:
+                    self.ui.display(self.ui.color_board(data['payload']['board']))
+                    uinput = input("Its your turn, enter a move (1-9): ")
+                    self.communication.send_message("make_move", {"game_id" : game_id, "move" : int(uinput)})
+                    response = self.communication.receive_message()
+                    if response['status'] != Status.ERROR.value:
+                        # Check if game is over after own move
+                        if "game_state" in response['payload'] and response['payload']['game_state'] == "Game Over":
+                            self.ui.alert(response['payload']['result'])
+                            return
+                        break
+                    else:
+                        self.ui.alert(response['payload']['message'])
+            else:
                 self.ui.alert(data['payload']['result'])
                 break
