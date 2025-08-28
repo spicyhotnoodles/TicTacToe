@@ -1,6 +1,14 @@
 # game_client/ui.py
 import shutil
 import os
+import re
+
+
+# Define colors using ANSI escape codes
+BLUE = "\033[1;36m"  # Blue for X
+RED = "\033[91m"   # Red for O
+RESET = "\033[0m"  # Reset color to default
+ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 
 class UIManager:
 
@@ -45,7 +53,11 @@ class UIManager:
     
     def display(self, message):
         self.__clear()
-        print(message.center(self.cols))
+        for line in message.splitlines():
+            # Strip ANSI codes for length calculation
+            visible_line = ANSI_ESCAPE.sub('', line)
+            padding = (self.cols - len(visible_line)) // 2
+            print(' ' * max(padding, 0) + line)
     
     def display_list(self, items, title=None, prompt="Press Enter to continue..."):
         if title:
@@ -57,3 +69,15 @@ class UIManager:
             for i, item in enumerate(items, 1):
                 print(f"{i}. {item}".center(self.cols))
         return input(prompt)
+
+    def color_board(self, board: str) -> str:
+        # Replace each character 'X' with blue and 'O' with red, and reset others
+        board_colored = ""
+        for char in board:
+            if char == 'X':
+                board_colored += f"{BLUE}{char}{RESET}"
+            elif char == 'O':
+                board_colored += f"{RED}{char}{RESET}"
+            else:
+                board_colored += char  # For numbers, leave them as they are
+        return board_colored
