@@ -45,29 +45,77 @@ int create_game(int fd, struct player *host) {
     return new_game.id;
 }
 
-// TODO
-
-/// @brief Starts a game between two players.
-/// @param fd The file descriptor of the host player.
-/// @param guest The player who is joining the game.
-/// @param game_index The index of the game to start.
-void start_game(int fd, struct player *guest, int game_index) {
-    struct game *game = &games[game_index];
-    game->guest = guest;
-    game->status = IN_PROGRESS; // Set the game status to in progress
-    lock_games(game->host); // Lock all other games for the host
-    lock_games(guest); // Lock all other games for the guest
-    printf("DEBUG: Game with ID %d started between %s and %s.\n", game->id, game->host->username, guest->username);
-    //TODO: Implement game logic here
-}
-
-/// @brief Locks all games for a player.
-/// @param player The player whose games should be locked.
-void lock_games(struct player *player) {
-    for (int i = 0; i < player->ngames; i++) {
-        if (player->games[i] != NULL) {
-            player->games[i]->status = LOCKED; // Lock the game
+/// @brief Evaluates the current state of the game.
+/// @param board The game board.
+/// @return The status of the game.
+enum GameStatus evaluate_game_state(char board[][3]) {
+    char potential_winner = '\0';
+    // Check for horizontal win
+    for (int i = 0; i < 3; i++) {
+        potential_winner = board[i][0];
+        if (potential_winner != 'E') {
+            if (board[i][0] == board[i][1] && board[i][0] == board[i][2]) {
+                goto who_won;
+            }
         }
     }
-    printf("DEBUG: All games for player %s have been locked.\n", player->username);
+    // Check for vertical win
+    for (int i = 0; i < 3; i++) {
+        potential_winner = board[0][i];
+        if (potential_winner != 'E') {
+            if (board[0][i] == board[1][i] && board[0][i] == board[2][i]) {
+                goto who_won;
+            }
+        }
+    }
+    // Check for left diagonal win
+    potential_winner = board[0][0];
+    if (potential_winner != 'E') {
+        if (board[0][0] == board[1][1] && board[0][0] == board[2][2]) {
+            goto who_won;
+        }
+    }
+    // Check for right diagonal win
+    potential_winner = board[0][2];
+    if (potential_winner != 'E') {
+        if (board[0][2] == board[1][1] && board[0][2] == board[2][0]) {
+            goto who_won;
+        }
+    }
+    // Check if the board is full
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (board[i][j] == 'E') {
+                return UNDECIDED;
+            }
+        }
+    }
+    return DRAW;
+    who_won:
+        return (potential_winner == 'X' ? PLAYER1_WINS : PLAYER2_WINS);
+}
+
+
+/// @brief Prints the current state of the game board to specified buffer.
+/// @param buffer The buffer to store the printed board.
+/// @param board The game board.
+/// @return The buffer containing the printed board.
+char * print_board(char buffer[], char board[][3]) {
+    int k = 0;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (board[i][j] == 'E') {
+                // Calculate position number (1-9) from row and column
+                int position = i * 3 + j + 1;
+                buffer[k] = '0' + position;  // Convert position to char '1'-'9'
+            } else {
+                buffer[k] = board[i][j];
+            }
+            k++;
+        }
+        buffer[k] = '\n';  // Add newline after each row
+        k++;
+    }
+    buffer[k] = '\0'; // Null terminate the string
+    return buffer;
 }
