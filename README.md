@@ -23,4 +23,5 @@ This program is a multiplayer tic-tac-toe game so, in order to play either creat
 + To join an existing game, select "Join Game" from the menu and choose a game from the list. A join request will be sent to the host for approval.
    + If the host accepts the request, you will be able to play the game.
    + If the host rejects the request, you will be notified and can try to join another game.
+
 When playing, make your move by selecting a position on the board (1-9) when prompted. The game will alternate turns between players until there is a winner or the game ends in a draw. The host of the game always start first and their symbol is X, while the guest's symbol is O.
