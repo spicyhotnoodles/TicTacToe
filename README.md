@@ -19,6 +19,7 @@ python run.py
 ## How to play
 This program is a multiplayer tic-tac-toe game so, in order to play either create a new game or join an existing one.
 + To create a new game, simply select the option from the menu and wait for another player to join.
+    + Always check "My Games" to see if a fellow guest has requested to join. If so select the game and accept or deny the request.      
 + To join an existing game, select "Join Game" from the menu and choose a game from the list. A join request will be sent to the host for approval.
    + If the host accepts the request, you will be able to play the game.
    + If the host rejects the request, you will be notified and can try to join another game.
