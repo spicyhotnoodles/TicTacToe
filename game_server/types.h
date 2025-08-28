@@ -21,11 +21,17 @@ enum StatusCode {
     ERROR = 400
 };
 
-enum GameStatus {
+enum LobbyStatus {
     WAITING_FOR_GUEST, // Game was just created
     WAITING_FOR_HOST, // A guest player requested to join. If the host rejects them the status turns back to WAIT_FOR_GUEST otherwise turns into IN_PROGRESS
-    IN_PROGRESS, // The game is being played
-    LOCKED
+    IN_PROGRESS // The game is being played
+};
+
+enum GameStatus {
+  UNDECIDED,
+  DRAW,
+  PLAYER1_WINS,
+  PLAYER2_WINS
 };
 
 /*
@@ -34,6 +40,7 @@ enum GameStatus {
     an integer (status_code) for indicating the status code (used only for response messages),
     and a pointer to a cJSON object (payload) for holding the message's data.
 */
+
 typedef struct {
     char *method; // RPC method. Optional, for request messages only 
     int status_code;
@@ -47,7 +54,9 @@ struct game {
     int id;
     struct player *host;
     struct player *guest;
-    enum GameStatus status;
+    enum LobbyStatus status;
+    char board[3][3];
+    bool host_turn;
 };
 
 struct player {

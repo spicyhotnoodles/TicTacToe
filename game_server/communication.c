@@ -129,14 +129,22 @@ void handle_request(int fd, message_t *request) {
             cJSON_AddStringToObject(response.payload, "message", "Cannot complete request: game is unavailable!");
         }
     } else if (strcmp(request->method, "start_game") == 0) {
-        printf("Got start game request\n");
-        if (request->payload) {
-            // TODO
-        } else {
-            fprintf(stderr, "Error! payload item is NULL\n");
-            response.status_code = ERROR;
-            cJSON_AddStringToObject(response.payload, "message", "Cannot complete request: game ID was not specified!");
-        }
+        printf("Client requested to start game\n");
+        cJSON *id_item = cJSON_GetObjectItem(request->payload, "game_id");
+        struct game *game = get_game(id_item->valueint);
+        game->status = IN_PROGRESS;
+        memset(game->board, 'E', sizeof(game->board)); // Init table
+        game->host_turn = true;
+        cJSON *game_info = cJSON_CreateObject();
+        cJSON_AddStringToObject(game_info, "game_state", "In Progress");
+        char buffer[16];
+        cJSON_AddStringToObject(game_info, "board", print_board(buffer, game->board));
+        response.status_code = OK;
+        response.payload = game_info;
+        message_t message;
+        message.payload = cJSON_CreateObject();
+        message.status_code = OK;
+        if (!send_message(game->guest->fd, &message)) { printf("Could not deliver message to guest"); }
     } else if (strcmp(request->method, "send_join_rejection") == 0) {
         cJSON *id_item = cJSON_GetObjectItem(request->payload, "game_id");
         struct game *game = get_game(id_item->valueint); 
@@ -151,7 +159,104 @@ void handle_request(int fd, message_t *request) {
         cJSON_AddStringToObject(response.payload, "message", ""); 
     } 
     else if (strcmp(request->method, "make_move") == 0) {
-
+        bool cleanup = false;
+        cJSON *id_item = cJSON_GetObjectItem(request->payload, "game_id");
+        struct game *game = get_game(id_item->valueint);
+        cJSON *move_item = cJSON_GetObjectItem(request->payload, "move");
+        int move = move_item->valueint;
+        int row = (move - 1) / 3;
+        int col = (move - 1) % 3;
+        char buffer[16];
+        if (move >= 1 && move <= 9 && game->board[row][col] == 'E') {
+            game->board[row][col] = game->host_turn ? 'X' : 'O';
+            // Check if the game is over
+            enum GameStatus state = evaluate_game_state(game->board);
+            message_t host_msg;
+            message_t guest_msg;
+            switch(state) {
+                case DRAW:
+                    // Send draw notification
+                    guest_msg.payload = cJSON_CreateObject();
+                    cJSON_AddStringToObject(guest_msg.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(guest_msg.payload, "result", "It's a draw!");
+                    cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(response.payload, "result", "It's a draw!");
+                    send_message(game->guest->fd, &guest_msg);
+                    cJSON_Delete(guest_msg.payload);
+                    cleanup = true;
+                break;
+                case PLAYER1_WINS:
+                    // Send player 1 wins notification
+                    guest_msg.payload = cJSON_CreateObject();
+                    cJSON_AddStringToObject(guest_msg.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(guest_msg.payload, "result", "You lost!");
+                    cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(response.payload, "result", "You won!");
+                    send_message(game->guest->fd, &guest_msg);
+                    cJSON_Delete(guest_msg.payload);
+                    cleanup = true;
+                break;
+                case PLAYER2_WINS:
+                // Send player 2 wins notification
+                    guest_msg.payload = cJSON_CreateObject();
+                    cJSON_AddStringToObject(guest_msg.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(guest_msg.payload, "result", "You won!");
+                    cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(response.payload, "result", "You lost!");
+                    send_message(game->guest->fd, &guest_msg);
+                    cJSON_Delete(guest_msg.payload);
+                    cleanup = true;
+                break;
+                case UNDECIDED:
+                    // Game is not over. Send table to other player
+                    game->host_turn = !game->host_turn;
+                    if (game->host_turn) {
+                        // Send update to host
+                        printf("DEBUG: Host Turn!\n");
+                        host_msg.payload = cJSON_CreateObject();
+                        cJSON_AddStringToObject(host_msg.payload, "game_state", "In Progress");
+                        cJSON_AddStringToObject(host_msg.payload, "board", print_board(buffer, game->board));
+                        send_message(game->host->fd, &host_msg);
+                    } else {
+                        // Send update to guest
+                        printf("DEBUG: Guest Turn!\n");
+                        guest_msg.payload = cJSON_CreateObject();
+                        cJSON_AddStringToObject(guest_msg.payload, "game_state", "In Progress");
+                        cJSON_AddStringToObject(guest_msg.payload, "board", print_board(buffer, game->board));
+                        send_message(game->guest->fd, &guest_msg);
+                    }
+                break;
+            }
+            response.status_code = OK;
+        } else {
+            response.status_code = ERROR;
+            cJSON_AddStringToObject(response.payload, "message", "Invalid move! Try again.");
+        }
+        if (cleanup) {
+            // Game is over, remove game from overall active games and from host's own games
+            // Overall game list
+            for (int i = 0; i < ngames; i++) {
+                if (games[i].id == id_item->valueint) {
+                    // Shift remaining games left
+                    for (int j = i + 1; j < ngames; j++) {
+                        games[j - 1] = games[j];
+                    }
+                    ngames--;
+                    break;
+                }
+            }
+            // Host's own games
+            for (int i = 0; i < game->host->ngames; i++) {
+                if (game->host->games[i] == game) {
+                    // Shift remaining games left
+                    for (int j = i + 1; j < game->host->ngames; j++) {
+                        game->host->games[j - 1] = game->host->games[j];
+                    }
+                    game->host->ngames--;
+                    break;
+                }
+            }
+        }
     }
     // Finally send response
     if (!send_message(fd, &response)) { printf("DEBUG: Could not send message to fd: %d", fd); }
