@@ -1,6 +1,3 @@
-//TODO: Everytime the server is stopped all clients need to be disconnected.
-//TODO: Find a better data structure to store players and games.
-
 #include "game_server/config.h" // Include the configuration header for constants
 #include "game_server/types.h" // Include the types header for structures
 #include "game_server/communication.h" // Include the communication header for function prototypes
@@ -62,7 +59,6 @@ int main() {
     while (true) {
         if (poll(fds, nfds, -1) < 0) { // -1 Wait indefinitely
             perror("poll failed");
-            close(client_fd);
             close(server_fd);
             exit(EXIT_FAILURE);
         }
