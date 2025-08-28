@@ -59,10 +59,9 @@ class GameManager():
                 idx = int(uinput) - 1
                 game_id = game_list[idx]['game_id']
                 if self.__send_join_request(game_id):
-                    self.ui.alert("Join request sent successfully. Waiting for host approval...")
+                    self.ui.display("Join request sent successfully. Waiting for host approval...")
                     response = self.communication.receive_message()
                     if response['status'] == Status.OK.value:
-                        self.ui.alert("Successfully joined the game.")
                         # TODO: Implement game logic here
                     else:
                         self.ui.alert(f"{response['payload']['message']}")
@@ -71,7 +70,7 @@ class GameManager():
 
     def my_games(self):
         if not self.hosted_games:
-            print("No hosted games.")
+            self.ui.alert("No hosted games.")
             return
         self._process_notifications()
         while True:
@@ -87,7 +86,7 @@ class GameManager():
                 continue
             selected_game = self.hosted_games[idx]
             self._handle_guest(selected_game)
-    
+            break
 
     # Helper functions:
     
@@ -113,11 +112,10 @@ class GameManager():
         while True:
             uinput = self.ui.alert(
                 f"{selected_game.guest} has requested to join this game.",
-                default_action="Accept? (y/n)"
+                default_action="Accept? (y/n) "
             )
             if uinput.lower() == 'y':
-                # TODO: Implement logic game here
-                # Host is starting the game
+                self.communication.send_message("start_game", {"game_id" : selected_game.id})
                 return
             elif uinput.lower() == 'n':
                 self.communication.send_message("send_join_rejection", {"game_id": selected_game.id})
@@ -149,3 +147,5 @@ class GameManager():
         else:
             self.ui.alert(f"Error: {response['payload']['message']}")
             return False
+                self.ui.alert(data['payload']['result'])
+                break
