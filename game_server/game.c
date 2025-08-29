@@ -5,8 +5,8 @@
 /// @return A pointer to the game structure if found, NULL otherwise.
 struct game *get_game(int game_id) {
     for (int i = 0; i < ngames; i++) {
-        if (games[i].id == game_id) {
-            return &games[i];
+        if (games[i]->id == game_id) {
+            return games[i];
         }
     }
     return NULL;
@@ -19,10 +19,10 @@ cJSON *create_game_list(struct player *player) {
     cJSON *list = cJSON_CreateObject();
     cJSON *array = cJSON_AddArrayToObject(list, "games_list");
     for (int i = 0; i < ngames; i++) {
-        if (games[i].guest == NULL && games[i].host != player) {
+        if (games[i]->guest == NULL && games[i]->host != player) {
             cJSON *game = cJSON_CreateObject();
-            cJSON_AddNumberToObject(game, "game_id", games[i].id);
-            cJSON_AddStringToObject(game, "host", games[i].host->username);
+            cJSON_AddNumberToObject(game, "game_id", games[i]->id);
+            cJSON_AddStringToObject(game, "host", games[i]->host->username);
             cJSON_AddItemToArray(array, game);
         }
     }
@@ -39,8 +39,9 @@ int create_game(int fd, struct player *host) {
     new_game.host = host; // Set the host player
     new_game.guest = NULL; // Initially no guest
     new_game.status = WAITING_FOR_GUEST; // Set initial status
-    games[ngames] = new_game; // Add to the games array
-    host->games[host->ngames++] = &games[ngames++]; // Add game to player's list
+    games[ngames] = malloc(sizeof(struct game));
+    *(games[ngames]) = new_game; // Add to the games array
+    host->games[host->ngames++] = games[ngames++];
     printf("DEBUG: New game with ID %d created by player %s.\n", new_game.id, host->username);
     return new_game.id;
 }

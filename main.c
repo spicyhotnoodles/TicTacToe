@@ -5,7 +5,7 @@
 
 struct player_table_entry player_table[PLAYER_TABLE_SIZE];
 struct pollfd fds[MAX_PLAYERS + 1]; // +1 for the server
-struct game games[MAX_GAMES]; // Array to hold active games
+struct game *games[MAX_GAMES]; // Array to hold active games
 
 int nfds = 0;
 int nplayers = 0;

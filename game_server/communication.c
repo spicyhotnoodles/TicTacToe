@@ -242,7 +242,8 @@ void handle_request(int fd, message_t *request) {
             // Game is over, remove game from overall active games and from host's own games
             // Overall game list
             for (int i = 0; i < ngames; i++) {
-                if (games[i].id == id_item->valueint) {
+                if (games[i]->id == id_item->valueint) {
+                    free(games[i]);
                     // Shift remaining games left
                     for (int j = i + 1; j < ngames; j++) {
                         games[j - 1] = games[j];
@@ -271,31 +272,25 @@ void handle_request(int fd, message_t *request) {
 
 void cleanup_games_for_player(int fd) {
     struct player *player = player_get(fd);
-    for (int i = 0; i < player->ngames; i++) {
-        struct game *game = player->games[i];
-        // Send all guests of player's games a message notifying disconnection
-        if (game->guest) {
-            message_t message;
-            message.status_code = ERROR;
-            message.payload = cJSON_CreateObject();
-            cJSON_AddStringToObject(message.payload, "message", "Error! The host has disconnected.");
-            if (!send_message(game->guest->fd, &message)) {
-                printf("DEBUG: Failed to send disconnection message to player %s\n", game->guest->username);
+    for (int i = 0; i < ngames; i++) {
+        if (games[i]->host == player && games[i]->guest != NULL) {
+            // Host disconnected - notify guest and remove game
+            message_t msg;
+            msg.status_code = ERROR;
+            msg.payload = cJSON_CreateObject();
+            cJSON_AddStringToObject(msg.payload, "message", "The host has disconnected.");
+            send_message(games[i]->guest->fd, &msg);
+            cJSON_Delete(msg.payload);
+            free(games[i]);
+            // Remove the game by shifting
+            for (int j = i + 1; j < ngames; j++) {
+                games[j - 1] = games[j];
             }
-            cJSON_Delete(message.payload);
-        }
-        // Remove games from global games array
-        for (int i = 0; i < ngames; i++) {
-            if (games[i].id == game->id) {
-                // Shift remaining games left
-                for (int j = i + 1; j < ngames; j++) {
-                    games[j - 1] = games[j];
-                }
-                ngames--;
-                break;
-            } else if (games[i].guest == player) {
-                games[i].guest = NULL;
-            }
+            ngames--;
+            i--; // Adjust i since we removed an element
+        } else if (games[i]->guest == player) {
+            // Guest disconnected - just mark as NULL, don't remove the game
+            games[i]->guest = NULL;
         }
     }
 }
