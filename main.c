@@ -106,6 +106,7 @@ int main() {
                     handle_request(fd, message);
                 } else {
                     printf("DEBUG: client with fd %d has disconnected\n", fd);
+                    cleanup_games_for_player(fd);
                     // Remove client from pollfd array
                     close(fd);
                     for (int j = i; j < nfds - 1; j++) {
@@ -115,8 +116,6 @@ int main() {
                     // Remove player from player_table
                     player_remove(fd);
                     nplayers--;
-                    // Optionally, clean up any games involving this player
-                    // cleanup_games_for_player(fd);
                     // Adjust loop index since we shifted fds
                     i--;
                 }
