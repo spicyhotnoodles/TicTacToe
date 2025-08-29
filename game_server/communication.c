@@ -105,7 +105,7 @@ void handle_request(int fd, message_t *request) {
         struct player *player = player_get(fd);
         int id = cJSON_GetObjectItem(request->payload, "game_id")->valueint;
         struct game *game = get_game(id);
-        if (!game->guest && game->status == WAITING_FOR_GUEST) {
+        if (game && !game->guest && game->status == WAITING_FOR_GUEST) {
             game->guest = player; // Set the guest player
             game->status = WAITING_FOR_HOST; // Update the game status
             struct player *host = game->host;
@@ -132,19 +132,25 @@ void handle_request(int fd, message_t *request) {
         printf("Client requested to start game\n");
         cJSON *id_item = cJSON_GetObjectItem(request->payload, "game_id");
         struct game *game = get_game(id_item->valueint);
-        game->status = IN_PROGRESS;
-        memset(game->board, 'E', sizeof(game->board)); // Init table
-        game->host_turn = true;
-        cJSON *game_info = cJSON_CreateObject();
-        cJSON_AddStringToObject(game_info, "game_state", "In Progress");
-        char buffer[16];
-        cJSON_AddStringToObject(game_info, "board", print_board(buffer, game->board));
-        response.status_code = OK;
-        response.payload = game_info;
-        message_t message;
-        message.payload = cJSON_CreateObject();
-        message.status_code = OK;
-        if (!send_message(game->guest->fd, &message)) { printf("Could not deliver message to guest"); }
+        // Check if guest has disconnected in the meanwhile
+        if (game->guest) {
+            game->status = IN_PROGRESS;
+            memset(game->board, 'E', sizeof(game->board)); // Init table
+            game->host_turn = true;
+            cJSON *game_info = cJSON_CreateObject();
+            cJSON_AddStringToObject(game_info, "game_state", "In Progress");
+            char buffer[16];
+            cJSON_AddStringToObject(game_info, "board", print_board(buffer, game->board));
+            response.status_code = OK;
+            response.payload = game_info;
+            message_t message;
+            message.payload = cJSON_CreateObject();
+            message.status_code = OK;
+            if (!send_message(game->guest->fd, &message)) { printf("Could not deliver message to guest"); }
+        } else {
+            response.status_code = ERROR;
+            cJSON_AddStringToObject(response.payload, "message", "Cannot start game: guest has disconnected");
+        }
     } else if (strcmp(request->method, "send_join_rejection") == 0) {
         cJSON *id_item = cJSON_GetObjectItem(request->payload, "game_id");
         struct game *game = get_game(id_item->valueint); 
