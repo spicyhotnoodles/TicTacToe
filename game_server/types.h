@@ -80,7 +80,6 @@ extern struct player_table_entry player_table[PLAYER_TABLE_SIZE];
 extern struct game games[MAX_GAMES]; // Array to hold active games
 extern struct player_table_entry player_table[PLAYER_TABLE_SIZE];
 extern struct pollfd fds[MAX_PLAYERS + 1]; // +1 for the server
-extern struct game games[MAX_GAMES]; // Array to hold active games
 extern int nfds; // Number of file descriptors currently in use
 extern int nplayers; // Number of players currently connected
 extern int ngames; // Number of games currently active
