@@ -268,3 +268,34 @@ void handle_request(int fd, message_t *request) {
     if (!send_message(fd, &response)) { printf("DEBUG: Could not send message to fd: %d", fd); }
     cJSON_Delete(response.payload);
 }
+
+void cleanup_games_for_player(int fd) {
+    struct player *player = player_get(fd);
+    for (int i = 0; i < player->ngames; i++) {
+        struct game *game = player->games[i];
+        // Send all guests of player's games a message notifying disconnection
+        if (game->guest) {
+            message_t message;
+            message.status_code = ERROR;
+            message.payload = cJSON_CreateObject();
+            cJSON_AddStringToObject(message.payload, "message", "Error! The host has disconnected.");
+            if (!send_message(game->guest->fd, &message)) {
+                printf("DEBUG: Failed to send disconnection message to player %s\n", game->guest->username);
+            }
+            cJSON_Delete(message.payload);
+        }
+        // Remove games from global games array
+        for (int i = 0; i < ngames; i++) {
+            if (games[i].id == game->id) {
+                // Shift remaining games left
+                for (int j = i + 1; j < ngames; j++) {
+                    games[j - 1] = games[j];
+                }
+                ngames--;
+                break;
+            } else if (games[i].guest == player) {
+                games[i].guest = NULL;
+            }
+        }
+    }
+}

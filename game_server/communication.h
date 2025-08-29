@@ -9,5 +9,6 @@
 void handle_request(int fd, message_t *message);
 bool send_message(int fd, message_t *message);
 message_t * receive_message(int fd);
+void cleanup_games_for_player(int fd);
 
 #endif
