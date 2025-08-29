@@ -116,8 +116,10 @@ class GameManager():
             )
             if uinput.lower() == 'y':
                 self.communication.send_message("start_game", {"game_id" : selected_game.id})
-                self.__play_game(selected_game.id)
-                self.hosted_games.remove(selected_game)
+                if (self.__play_game(selected_game.id)):
+                    self.hosted_games.remove(selected_game)
+                else:
+                    selected_game.guest = None
                 return
             elif uinput.lower() == 'n':
                 self.communication.send_message("send_join_rejection", {"game_id": selected_game.id})
@@ -168,13 +170,13 @@ class GameManager():
                             # Check if game is over after own move
                             if "game_state" in response['payload'] and response['payload']['game_state'] == "Game Over":
                                 self.ui.alert(response['payload']['result'])
-                                return
+                                return True
                             break
                         else:
                             self.ui.alert(response['payload']['message'])
                 else:
                     self.ui.alert(data['payload']['result'])
-                    break
+                    return True
             else:
                 self.ui.alert(f"Error: {data['payload']['message']}")
-                break
+                return False
