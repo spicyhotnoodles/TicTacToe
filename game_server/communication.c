@@ -241,11 +241,11 @@ void handle_request(int fd, message_t *request) {
             cJSON_AddStringToObject(response.payload, "message", "Invalid move! Try again.");
         }
         if (cleanup) {
+            printf("DEBUG: Cleaning up game resources\n");
             // Game is over, remove game from overall active games and from host's own games
             // Overall game list
             for (int i = 0; i < ngames; i++) {
                 if (games[i]->id == id_item->valueint) {
-                    free(games[i]);
                     // Shift remaining games left
                     for (int j = i + 1; j < ngames; j++) {
                         games[j - 1] = games[j];
@@ -262,6 +262,7 @@ void handle_request(int fd, message_t *request) {
                         game->host->games[j - 1] = game->host->games[j];
                     }
                     game->host->ngames--;
+                    free(game->host->games[i]);
                     break;
                 }
             }
