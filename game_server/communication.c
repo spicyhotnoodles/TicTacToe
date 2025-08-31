@@ -219,6 +219,7 @@ void handle_request(int fd, message_t *request) {
                     if (game->host_turn) {
                         // Send update to host
                         printf("DEBUG: Host Turn!\n");
+                        host_msg.status_code = OK;
                         host_msg.payload = cJSON_CreateObject();
                         cJSON_AddStringToObject(host_msg.payload, "game_state", "In Progress");
                         cJSON_AddStringToObject(host_msg.payload, "board", print_board(buffer, game->board));
@@ -226,6 +227,7 @@ void handle_request(int fd, message_t *request) {
                     } else {
                         // Send update to guest
                         printf("DEBUG: Guest Turn!\n");
+                        guest_msg.status_code = OK;
                         guest_msg.payload = cJSON_CreateObject();
                         cJSON_AddStringToObject(guest_msg.payload, "game_state", "In Progress");
                         cJSON_AddStringToObject(guest_msg.payload, "board", print_board(buffer, game->board));
