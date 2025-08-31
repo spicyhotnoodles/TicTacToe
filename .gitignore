@@ -58,3 +58,7 @@ dkms.conf
 
 # Build dir
 build/
+
+# pyinstaller
+dist
+run.spec
