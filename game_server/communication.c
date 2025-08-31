@@ -204,13 +204,13 @@ void handle_request(int fd, message_t *request) {
                 break;
                 case PLAYER2_WINS:
                 // Send player 2 wins notification
-                    guest_msg.payload = cJSON_CreateObject();
-                    cJSON_AddStringToObject(guest_msg.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(guest_msg.payload, "result", "You won!");
+                    host_msg.payload = cJSON_CreateObject();
+                    cJSON_AddStringToObject(host_msg.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(host_msg.payload, "result", "You won!");
                     cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
                     cJSON_AddStringToObject(response.payload, "result", "You lost!");
-                    send_message(game->guest->fd, &guest_msg);
-                    cJSON_Delete(guest_msg.payload);
+                    send_message(game->host->fd, &host_msg);
+                    cJSON_Delete(host_msg.payload);
                     cleanup = true;
                 break;
                 case UNDECIDED:
