@@ -262,10 +262,10 @@ void handle_request(int fd, message_t *request) {
                         game->host->games[j - 1] = game->host->games[j];
                     }
                     game->host->ngames--;
-                    free(game->host->games[i]);
                     break;
                 }
             }
+            free(game);
         }
     }
     // Finally send response
