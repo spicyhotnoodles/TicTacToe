@@ -276,14 +276,18 @@ void handle_request(int fd, message_t *request) {
 void cleanup_games_for_player(int fd) {
     struct player *player = player_get(fd);
     for (int i = 0; i < ngames; i++) {
-        if (games[i]->host == player && games[i]->guest != NULL) {
+        if (games[i]->host == player) {
             // Host disconnected - notify guest and remove game
-            message_t msg;
-            msg.status_code = ERROR;
-            msg.payload = cJSON_CreateObject();
-            cJSON_AddStringToObject(msg.payload, "message", "The host has disconnected.");
-            send_message(games[i]->guest->fd, &msg);
-            cJSON_Delete(msg.payload);
+            if (games[i]->guest != NULL) {
+                message_t msg;
+                msg.status_code = ERROR;
+                msg.payload = cJSON_CreateObject();
+                cJSON_AddStringToObject(msg.payload, "message", "The host has disconnected.");
+                if (!send_message(games[i]->guest->fd, &msg)) {
+                    printf("DEBUG: Could not send message to guest fd: %d", games[i]->guest->fd);
+                }
+                cJSON_Delete(msg.payload);
+            }
             free(games[i]);
             // Remove the game by shifting
             for (int j = i + 1; j < ngames; j++) {
