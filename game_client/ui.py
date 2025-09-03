@@ -30,6 +30,7 @@ class UIManager:
         ]
         for line in art:
             print(line.center(self.cols))
+        print("\n")
 
     def menu(self):
         self.__clear()
@@ -63,12 +64,23 @@ class UIManager:
         if title:
             self.__clear()
             print(title.center(self.cols))
+            print() # Add a little space after the title
         if not items:
             print("No items available.".center(self.cols))
         else:
-            for i, item in enumerate(items, 1):
-                print(f"{i}. {item}".center(self.cols))
-        return input(prompt)
+            # Create the full strings first to measure them
+            formatted_items = [f"{i}. {item}" for i, item in enumerate(items, 1)]
+            # Find the length of the longest item to determine the block's width
+            if not formatted_items: # Handle case where items is empty
+                max_width = 0
+            else:
+                max_width = max(len(s) for s in formatted_items)
+            # Calculate the left padding to center the entire block
+            padding = " " * ((self.cols - max_width) // 2)
+            # Print each item with the same calculated padding
+            for item_line in formatted_items:
+                print(f"{padding}{item_line}")
+        return input(f"\n{prompt}") # Add a newline for better spacing
 
     def color_board(self, board: str) -> str:
         # Replace each character 'X' with blue and 'O' with red, and reset others
