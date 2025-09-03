@@ -53,20 +53,22 @@ class GameManager():
     def join_game(self):
         game_list = self.__get_game_list()
         if game_list:
-            items = [f"Game ID: {game['game_id']}, Host: {game['host']}" for game in game_list]
-            uinput = self.ui.display_list(items, title="List of Available Games", prompt="Select the game you want to join by index: ")
-            try:
-                idx = int(uinput) - 1
-                game_id = game_list[idx]['game_id']
-                if self.__send_join_request(game_id):
-                    self.ui.display("Join request sent successfully. Waiting for host approval...")
-                    response = self.communication.receive_message()
-                    if response['status'] == Status.OK.value:
-                        self.__play_game(game_id)
-                    else:
-                        self.ui.alert(f"{response['payload']['message']}")
-            except (ValueError, IndexError):
-                print("Invalid input! Please try again")
+            while True:
+                items = [f"Game ID: {game['game_id']}, Host: {game['host']}" for game in game_list]
+                uinput = self.ui.display_list(items, title="List of Available Games", prompt="Select the game you want to join by index: ")
+                try:
+                    idx = int(uinput) - 1
+                    game_id = game_list[idx]['game_id']
+                    if self.__send_join_request(game_id):
+                        self.ui.display("Join request sent successfully. Waiting for host approval...")
+                        response = self.communication.receive_message()
+                        if response['status'] == Status.OK.value:
+                            self.__play_game(game_id)
+                            return
+                        else:
+                            self.ui.alert(f"{response['payload']['message']}")
+                except (ValueError, IndexError):
+                    self.ui.alert("Invalid input! Please try again")
 
     def my_games(self):
         if not self.hosted_games:
@@ -78,11 +80,11 @@ class GameManager():
             if uinput == '9':
                 break
             if not uinput.isdigit():
-                print("Invalid input! Please try again")
+                self.ui.alert("Invalid input! Please try again")
                 continue
             idx = int(uinput) - 1
             if idx < 0 or idx >= len(self.hosted_games):
-                print("Index is out of game list! Please try again.")
+                self.ui.alert("Index is out of game list! Please try again.")
                 continue
             selected_game = self.hosted_games[idx]
             self._handle_guest(selected_game)
