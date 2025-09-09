@@ -55,9 +55,11 @@ class GameManager():
         if game_list:
             while True:
                 items = [f"Game ID: {game['game_id']}, Host: {game['host']}" for game in game_list]
-                uinput = self.ui.display_list(items, title="List of Available Games", prompt="Select the game you want to join by index: ")
+                uinput = self.ui.display_list(items, title="List of Available Games", prompt="Select the game you want to join by index (0 to main menu): ")
                 try:
                     idx = int(uinput) - 1
+                    if idx < 0:
+                        break
                     game_id = game_list[idx]['game_id']
                     if self.__send_join_request(game_id):
                         self.ui.display("Join request sent successfully. Waiting for host approval...")
@@ -77,7 +79,7 @@ class GameManager():
         self._process_notifications()
         while True:
             uinput = self._print_hosted_games()
-            if uinput == '9':
+            if uinput == '0':
                 break
             if not uinput.isdigit():
                 self.ui.alert("Invalid input! Please try again")
@@ -105,7 +107,7 @@ class GameManager():
     
     def _print_hosted_games(self):
         items = [f"Game ID: {game.id}, Guest: {game.guest}" for game in self.hosted_games]
-        return self.ui.display_list(items, title="My Hosted Games", prompt="Select a game by index (9 to main menu): ")
+        return self.ui.display_list(items, title="My Hosted Games", prompt="Select a game by index (0 to main menu): ")
     
     def _handle_guest(self, selected_game):
         if not selected_game.guest:
