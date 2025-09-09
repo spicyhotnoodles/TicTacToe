@@ -181,36 +181,58 @@ void handle_request(int fd, message_t *request) {
             message_t guest_msg;
             switch(state) {
                 case DRAW:
-                    // Send draw notification
+                    // Send draw notification to both players
                     guest_msg.payload = cJSON_CreateObject();
                     cJSON_AddStringToObject(guest_msg.payload, "game_state", "Game Over");
                     cJSON_AddStringToObject(guest_msg.payload, "result", "It's a draw!");
+                    send_message(game->guest->fd, &guest_msg);
+                    cJSON_Delete(guest_msg.payload);    
+                    host_msg.payload = cJSON_CreateObject();
+                    cJSON_AddStringToObject(host_msg.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(host_msg.payload, "result", "It's a draw!");
+                    send_message(game->host->fd, &host_msg);
+                    cJSON_Delete(host_msg.payload);
+                    // Response to whoever made the move
                     cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
                     cJSON_AddStringToObject(response.payload, "result", "It's a draw!");
-                    send_message(game->guest->fd, &guest_msg);
-                    cJSON_Delete(guest_msg.payload);
                     cleanup = true;
                 break;
-                case PLAYER1_WINS:
-                    // Send player 1 wins notification
+                case PLAYER1_WINS: // X wins - host is X
+                    // Host wins, guest loses
                     guest_msg.payload = cJSON_CreateObject();
                     cJSON_AddStringToObject(guest_msg.payload, "game_state", "Game Over");
                     cJSON_AddStringToObject(guest_msg.payload, "result", "You lost!");
-                    cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(response.payload, "result", "You won!");
                     send_message(game->guest->fd, &guest_msg);
-                    cJSON_Delete(guest_msg.payload);
-                    cleanup = true;
-                break;
-                case PLAYER2_WINS:
-                // Send player 2 wins notification
+                    cJSON_Delete(guest_msg.payload);   
                     host_msg.payload = cJSON_CreateObject();
                     cJSON_AddStringToObject(host_msg.payload, "game_state", "Game Over");
                     cJSON_AddStringToObject(host_msg.payload, "result", "You won!");
-                    cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(response.payload, "result", "You lost!");
                     send_message(game->host->fd, &host_msg);
                     cJSON_Delete(host_msg.payload);
+                    // Set response based on who made the move
+                    cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(response.payload, "result", 
+                        fd == game->host->fd ? "You won!" : "You lost!");
+                    cleanup = true;
+                break;
+                case PLAYER2_WINS: // O wins - guest is O
+                    // Host loses, guest wins
+                    guest_msg.payload = cJSON_CreateObject();
+                    cJSON_AddStringToObject(guest_msg.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(guest_msg.payload, "result", "You won!");
+                    send_message(game->guest->fd, &guest_msg);
+                    cJSON_Delete(guest_msg.payload);
+
+                    host_msg.payload = cJSON_CreateObject();
+                    cJSON_AddStringToObject(host_msg.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(host_msg.payload, "result", "You lost!");
+                    send_message(game->host->fd, &host_msg);
+                    cJSON_Delete(host_msg.payload);
+
+                    // Set response based on who made the move
+                    cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(response.payload, "result", 
+                        fd == game->guest->fd ? "You won!" : "You lost!");
                     cleanup = true;
                 break;
                 case UNDECIDED:
