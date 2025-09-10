@@ -2,8 +2,8 @@
 Multiplayer tic-tac-toe game developed with server-client architecture. The server is implemented in C, while the client is a Python application. This was a project developed for educational purposes during my academic career at Università degli Studi di Napoli Federico II.
 ## How to build the server
 + Build the project locally on your machine:
+    > ⚠️ Make sure to have [cJSON](https://github.com/DaveGamble/cJSON) and [glib](https://docs.gtk.org/glib/) libraries installed on your system!
     ```shell
-    # make sure to have cJSON library installed on your system!
     make && ./build/server
     ```
 + Build with docker:
