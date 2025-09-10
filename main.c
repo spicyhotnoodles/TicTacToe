@@ -2,17 +2,11 @@
 #include "game_server/types.h" // Include the types header for structures
 #include "game_server/communication.h" // Include the communication header for function prototypes
 #include "game_server/hash.h" // Include the hash header for player management functions
+#include "game_server/game.h" // Include the game header for game management functions
 
-struct player_table_entry player_table[PLAYER_TABLE_SIZE];
-struct pollfd fds[MAX_PLAYERS + 1]; // +1 for the server
-struct game *games[MAX_GAMES]; // Array to hold active games
-
-int nfds = 0;
-int nplayers = 0;
-int ngames = 0;
-
-char welcome_msg[MAX_MSG_LEN] = "Welcome to the server!";
-char error_msg[MAX_MSG_LEN] = "Cannot resolve request: max number of players reached!";
+GArray *fds; // Dynamic array to hold poll file descriptors
+GHashTable *games; // Hash table to store active games
+GHashTable *players; // Hash table to store active players
 
 int main() {
 
@@ -50,78 +44,94 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    // Init game hash table
+    games = g_hash_table_new_full(  // g_hash_table_new_full allows to specify for custom free functions
+        g_direct_hash, // hash function for integer keys
+        g_direct_equal, // key equality function (keys are integers, use default)
+        NULL, // key free function (keys are integers, no need to free)
+        free_game // value free function (custom function to free game resources)
+    );
+
+    // Init player hash table
+    players = g_hash_table_new(
+        g_direct_hash, 
+        g_direct_equal
+    );
+
+    // Initialize dynamic array for poll file descriptors
+    fds = g_array_new(FALSE, FALSE, sizeof(struct pollfd));
+    struct pollfd server = {
+        .fd = server_fd,
+        .events = POLLIN
+    };
+    g_array_append_val(fds, server); // Add server fd to the array
+
     printf("Server listening on port %d...\n", PORT);
 
-    fds[0].fd = server_fd;
-    fds[0].events = POLLIN; // Monitor for incoming connections
-    nfds++;
-
     while (true) {
-        if (poll(fds, nfds, -1) < 0) { // -1 Wait indefinitely
+        if (poll(&g_array_index(fds, struct pollfd, 0),
+                fds->len,
+                -1) < 0) {
             perror("poll failed");
             close(server_fd);
             exit(EXIT_FAILURE);
         }
         // Check for new connections
-        if (fds[0].revents & POLLIN) {
+        if (g_array_index(fds, struct pollfd, 0).revents & POLLIN) { // g_array_index gets the first element of the array, which is the server fd
             if ((client_fd = accept(server_fd, (struct sockaddr *)&cliaddr, &clilen)) < 0) {
                 perror("accept failed");
                 close(server_fd);
                 exit(EXIT_FAILURE);
             }
             message_t message;
-            cJSON *tmp = cJSON_CreateObject();
-            bool outcome;
-            if (nplayers < MAX_PLAYERS) {
-                printf("DEBUG: Connection accepted from %s:%d\n", inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
-                cJSON_AddStringToObject(tmp, "message", welcome_msg);
-                message.status_code = OK;
-                message.payload = tmp;
-                fds[nfds].fd = client_fd;
-                fds[nfds].events = POLLIN;
-                nfds++;
-                outcome = send_message(client_fd, &message);
-            } else {
-                fprintf(stderr, "DEBUG: Max players reached. Connection refused.\n");
-                cJSON_AddStringToObject(tmp, "message", error_msg);
-                message.status_code = ERROR;
-                message.payload = tmp;
-                outcome = send_message(client_fd, &message);
-                close(client_fd);
-            }
-            cJSON_Delete(message.payload);
-            if (!outcome) {
+            message.payload = cJSON_CreateObject();
+            message.status_code = OK;
+            cJSON_AddStringToObject(message.payload, "message", "Welcome to the server!");
+            struct pollfd new_fd = {
+                .fd = client_fd,
+                .events = POLLIN
+            };
+            g_array_append_val(fds, new_fd); // Add new client fd to the array
+            printf("DEBUG: New client connected with fd %d\n", client_fd);
+            // Send welcome message
+            if (!send_message(client_fd, &message)) {
                 printf("DEBUG: Failed to send welcome message to client %d\n", client_fd);
-                continue;
+                close(client_fd);
+                g_array_remove_index(fds, fds->len - 1);
             } else {
                 printf("DEBUG: Welcome message sent to client %d\n", client_fd);
             }
         }
         // Check for data from clients
-        for (int i = 1; i < nfds; i++) {
-            if (fds[i].revents & POLLIN) {
-                int fd = fds[i].fd;
+        for (guint i = 1; i < fds->len; i++) {
+            if (g_array_index(fds, struct pollfd, i).revents & POLLIN) {
+                int fd = g_array_index(fds, struct pollfd, i).fd;
                 message_t *message = receive_message(fd);
                 if (message) {
+                    // Process client request
                     handle_request(fd, message);
                 } else {
                     printf("DEBUG: client with fd %d has disconnected\n", fd);
-                    cleanup_games_for_player(fd);
+                    if (g_hash_table_contains(players, GINT_TO_POINTER(fd))) {
+                        cleanup_games_for_player(fd);
+                    }
                     // Remove client from pollfd array
                     close(fd);
-                    for (int j = i; j < nfds - 1; j++) {
-                        fds[j] = fds[j + 1];
+                    // Shift elements left to fill the gap
+                    for (guint j = i; j < fds->len - 1; j++) {
+                        g_array_index(fds, struct pollfd, j) = g_array_index(fds, struct pollfd, j + 1);
                     }
-                    nfds--;
-                    // Remove player from player_table
-                    player_remove(fd);
-                    nplayers--;
+                    // Remove last element since it's now a duplicate
+                    fds = g_array_remove_index(fds, fds->len - 1);
                     // Adjust loop index since we shifted fds
                     i--;
                 }
             }
         }
     }
+    free(fds);
+    g_hash_table_destroy(games);
+    g_hash_table_destroy(players);
     close(client_fd);
     close(server_fd);
     return 0;

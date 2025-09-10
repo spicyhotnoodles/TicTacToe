@@ -9,16 +9,17 @@
 #include <arpa/inet.h>
 #include <poll.h>
 #include <time.h>
-#include <cjson/cJSON.h>
+#include <cjson/cJSON.h> // For cJSON library
 #include <errno.h>
+#include <glib.h> // For GHashTable and GList
 #include "config.h"
 
 #define BUFFER_SIZE 1024
 
 // HTTP-like status codes
 enum StatusCode {
-    OK = 200,
-    ERROR = 400
+    OK = 200, // Request was successful
+    ERROR = 400 // There was an error with the request
 };
 
 enum LobbyStatus {
@@ -28,10 +29,10 @@ enum LobbyStatus {
 };
 
 enum GameStatus {
-  UNDECIDED,
-  DRAW,
-  PLAYER1_WINS,
-  PLAYER2_WINS
+  UNDECIDED, // Game is still ongoing
+  DRAW, // The game ended in a draw
+  PLAYER1_WINS, // Host wins - X
+  PLAYER2_WINS // Guest wins - O
 };
 
 /*
@@ -43,45 +44,34 @@ enum GameStatus {
 
 typedef struct {
     char *method; // RPC method. Optional, for request messages only 
-    int status_code;
+    int status_code; // Status code. Optional, for response messages only
     cJSON *payload; // Contains either argumnet for the RPC (request only) or a message to clarify the status code
 } message_t;
 
 // Forward declarations
 struct player;
 
+/// @brief Represents a game session between two players.
 struct game {
-    int id;
-    struct player *host;
-    struct player *guest;
-    enum LobbyStatus status;
-    char board[3][3];
-    bool host_turn;
+    int id; // Unique game ID
+    struct player *host; // Player who created the game
+    struct player *guest; // Player who joined the game
+    enum LobbyStatus status; // Current status of the game: WAITING_FOR_GUEST, WAITING_FOR_HOST, IN_PROGRESS
+    char board[3][3]; // 3x3 game board
+    bool host_turn; // true if it's host's turn (X), false if it's guest's turn (O)
 };
 
+/// @brief Represents a player connected to the server.
 struct player {
-    int fd;
-    char username[17]; // 16 characters + null terminator
-    struct game *games[MAX_GAMES_PER_PLAYER];
-    int ngames; // Number of games the player is involved in
+    int fd; // File descriptor associated with the player
+    char *username; // Player's username
+    GList *hosted_game_ids; // List of game IDs the player is hosting
+    GList *joined_game_ids; // List of game IDs the player has joined as guest
+    
+    // The lists above makes the hash table cleanup easier because the lookup is faster
 };
 
-struct player_table_entry {
-    int fd;
-    struct player data;
-    bool in_use;
-};
-
-extern int ngames; // Global variable to track the number of games
-extern int nfds; // Number of file descriptors currently in use
-extern int nplayers; // Number of players currently connected
-extern int ngames; // Number of games currently active
-extern struct player_table_entry player_table[PLAYER_TABLE_SIZE];
-extern struct game *games[MAX_GAMES]; // Array to hold active games
-extern struct player_table_entry player_table[PLAYER_TABLE_SIZE];
-extern struct pollfd fds[MAX_PLAYERS + 1]; // +1 for the server
-extern int nfds; // Number of file descriptors currently in use
-extern int nplayers; // Number of players currently connected
-extern int ngames; // Number of games currently active
+extern GHashTable *games; // Declared in main.c
+extern GHashTable *players; // Declared in main.c
 
 #endif

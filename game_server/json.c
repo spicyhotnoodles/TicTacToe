@@ -102,6 +102,8 @@ message_t * message_create(int status, char *payload_name, void *payload_value) 
     return msg;
 }
 
+/// @brief Frees the memory allocated for a message_t structure.
+/// @param msg Pointer to the message to be freed
 void message_free(message_t *msg) {
     if (!msg) return;
     free(msg->method);

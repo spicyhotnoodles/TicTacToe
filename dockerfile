@@ -3,7 +3,7 @@ FROM gcc:latest
 
 # Install cJSON library
 RUN apt-get update &&\
-    apt-get install libcjson-dev libcjson1 -y
+    apt-get install libcjson-dev libcjson1 libglib2.0-dev -y 
     
 # Set working directory    
 WORKDIR /app

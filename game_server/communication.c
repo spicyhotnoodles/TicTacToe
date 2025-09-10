@@ -47,10 +47,7 @@ void handle_request(int fd, message_t *request) {
     response.payload = cJSON_CreateObject(); // Free memory after sending message!
     if (strcmp(request->method, "login") == 0) {
         printf("DEBUG: Client requested login\n");
-        char username[17];
-        memset(username, 0, sizeof(username));
-        strncpy(username, cJSON_GetObjectItem(request->payload, "username")->valuestring, sizeof(username) - 1);
-        username[sizeof(username) - 1] = '\0'; // Ensure null-termination
+        char *username = strdup(cJSON_GetObjectItem(request->payload, "username")->valuestring);
         printf("DEBUG: Received username [%s]\n", username);
         if (username_exists(username)) {
             printf("DEBUG: Username [%s] already in use.\n", username);
@@ -58,40 +55,31 @@ void handle_request(int fd, message_t *request) {
             cJSON_AddStringToObject(response.payload, "message", "Username already in use. Choose another one!");
         } else {
             printf("DEBUG: Username [%s] is available.\n", username);
-            struct player new_player;
-            new_player.fd = fd;
-            strncpy(new_player.username, username, sizeof(new_player.username) - 1);
-            new_player.username[sizeof(new_player.username) - 1] = '\0'; // Ensure null-termination
-            new_player.ngames = 0;
-            printf("DEBUG: Player %s with file descriptor %d initilized\n", username, fd);
-            player_add(new_player);
-            fds[nfds - 1].fd = new_player.fd;
-            nplayers++;
-            printf("DEBUG: Player %s connected. Total players: %d\n", new_player.username, nplayers);
+            struct player *player = malloc(sizeof(struct player));
+            *player = (struct player) {
+                .username = strdup(username),
+                .fd = fd,
+                .hosted_game_ids = NULL,
+                .joined_game_ids = NULL
+            };
+            printf("DEBUG: Player %s with file descriptor %d initialized\n", username, fd);
+            g_hash_table_insert(players, GINT_TO_POINTER(player->fd), player);
+            printf("DEBUG: Player %s connected. Total players: %d\n", player->username, g_hash_table_size(players));
             response.status_code = OK;
             cJSON_AddStringToObject(response.payload, "message", "Login succesful!");
         }
     } else if (strcmp(request->method, "new_game") == 0) {
         printf("DEBUG: Client requested new game creation\n");
-        if (ngames < MAX_GAMES) {
-            struct player *host = player_get(fd);
-            if (host->ngames < MAX_GAMES_PER_PLAYER) {
-                int game_id = create_game(fd, host);
-                response.status_code = OK;
-                cJSON_AddNumberToObject(response.payload, "game_id", game_id);
-            } else {
-                response.status_code = ERROR;
-                cJSON_AddStringToObject(response.payload, "message", "Max number of games available for selected player reached!");
-            }
-        } else {
-            response.status_code = ERROR;
-            cJSON_AddStringToObject(response.payload, "message", "Max number of games available for the server reached!");
-        }
+        struct player *host = g_hash_table_lookup(players, GINT_TO_POINTER(fd));
+        int game_id = create_game(fd, host);
+        response.status_code = OK;
+        cJSON_AddNumberToObject(response.payload, "game_id", game_id);
     } else if (strcmp(request->method, "get_games_list") == 0) {
-        struct player *guest = player_get(fd);
-        cJSON *game_list = create_game_list(guest);
+        struct player *player = g_hash_table_lookup(players, GINT_TO_POINTER(fd));
+        cJSON *game_list = create_game_list(player);
         cJSON *array = cJSON_GetObjectItem(game_list, "games_list");
         int count = cJSON_GetArraySize(array);
+        cJSON_Delete(response.payload);
         if (count == 0) {
             response.status_code = ERROR;
             cJSON_AddStringToObject(response.payload, "message", "No active games available");
@@ -102,11 +90,12 @@ void handle_request(int fd, message_t *request) {
         }
     } else if (strcmp(request->method, "send_join_request") == 0) {
         printf("Got join game request\n");
-        struct player *player = player_get(fd);
+        struct player *player = g_hash_table_lookup(players, GINT_TO_POINTER(fd));
         int id = cJSON_GetObjectItem(request->payload, "game_id")->valueint;
-        struct game *game = get_game(id);
-        if (game && !game->guest && game->status == WAITING_FOR_GUEST) {
+        struct game *game = g_hash_table_lookup(games, GINT_TO_POINTER(id));
+        if (game) {
             game->guest = player; // Set the guest player
+            player->joined_game_ids = g_list_insert(player->joined_game_ids, GINT_TO_POINTER(game->id), g_list_length(player->joined_game_ids));
             game->status = WAITING_FOR_HOST; // Update the game status
             struct player *host = game->host;
             message_t notification;
@@ -131,7 +120,7 @@ void handle_request(int fd, message_t *request) {
     } else if (strcmp(request->method, "start_game") == 0) {
         printf("Client requested to start game\n");
         cJSON *id_item = cJSON_GetObjectItem(request->payload, "game_id");
-        struct game *game = get_game(id_item->valueint);
+        struct game *game = g_hash_table_lookup(games, GINT_TO_POINTER(id_item->valueint));
         // Check if guest has disconnected in the meanwhile
         if (game->guest) {
             game->status = IN_PROGRESS;
@@ -153,12 +142,13 @@ void handle_request(int fd, message_t *request) {
         }
     } else if (strcmp(request->method, "send_join_rejection") == 0) {
         cJSON *id_item = cJSON_GetObjectItem(request->payload, "game_id");
-        struct game *game = get_game(id_item->valueint); 
+        struct game *game = g_hash_table_lookup(games, GINT_TO_POINTER(id_item->valueint));
         message_t message;
         message.payload = cJSON_CreateObject();
         message.status_code = ERROR;
         cJSON_AddStringToObject(message.payload, "message", "Host denied your request");
         if (!send_message(game->guest->fd, &message)) { printf("Could not deliver message to guest"); }
+        game->guest->joined_game_ids = g_list_remove(game->guest->joined_game_ids, GINT_TO_POINTER(game->id));
         game->guest = NULL;
         game->status = WAITING_FOR_GUEST;
         response.status_code = OK;
@@ -167,7 +157,7 @@ void handle_request(int fd, message_t *request) {
     else if (strcmp(request->method, "make_move") == 0) {
         bool cleanup = false;
         cJSON *id_item = cJSON_GetObjectItem(request->payload, "game_id");
-        struct game *game = get_game(id_item->valueint);
+        struct game *game = g_hash_table_lookup(games, GINT_TO_POINTER(id_item->valueint));
         cJSON *move_item = cJSON_GetObjectItem(request->payload, "move");
         int move = move_item->valueint;
         int row = (move - 1) / 3;
@@ -246,30 +236,17 @@ void handle_request(int fd, message_t *request) {
         }
         if (cleanup) {
             printf("DEBUG: Cleaning up game resources\n");
-            // Game is over, remove game from overall active games and from host's own games
-            // Overall game list
-            for (int i = 0; i < ngames; i++) {
-                if (games[i]->id == id_item->valueint) {
-                    // Shift remaining games left
-                    for (int j = i + 1; j < ngames; j++) {
-                        games[j - 1] = games[j];
-                    }
-                    ngames--;
-                    break;
-                }
-            }
-            // Host's own games
-            for (int i = 0; i < game->host->ngames; i++) {
-                if (game->host->games[i] == game) {
-                    // Shift remaining games left
-                    for (int j = i + 1; j < game->host->ngames; j++) {
-                        game->host->games[j - 1] = game->host->games[j];
-                    }
-                    game->host->ngames--;
-                    break;
-                }
-            }
-            free(game);
+
+            struct player *host = game->host;
+            struct player *guest = game->guest;
+
+            // Remove game from table
+            // Remove game from host's list
+            host->hosted_game_ids = g_list_remove(host->hosted_game_ids, GINT_TO_POINTER(game->id));
+            // Remove game from guest's list
+            guest->joined_game_ids = g_list_remove(guest->joined_game_ids, GINT_TO_POINTER(game->id));
+            
+            g_hash_table_remove(games, GINT_TO_POINTER(game->id));
         }
     }
     // Finally send response
@@ -278,30 +255,42 @@ void handle_request(int fd, message_t *request) {
 }
 
 void cleanup_games_for_player(int fd) {
-    struct player *player = player_get(fd);
-    for (int i = 0; i < ngames; i++) {
-        if (games[i]->host == player) {
-            // Host disconnected - notify guest and remove game
-            if (games[i]->guest != NULL) {
-                message_t msg;
-                msg.status_code = ERROR;
-                msg.payload = cJSON_CreateObject();
-                cJSON_AddStringToObject(msg.payload, "message", "The host has disconnected.");
-                if (!send_message(games[i]->guest->fd, &msg)) {
-                    printf("DEBUG: Could not send message to guest fd: %d", games[i]->guest->fd);
-                }
-                cJSON_Delete(msg.payload);
-            }
-            free(games[i]);
-            // Remove the game by shifting
-            for (int j = i + 1; j < ngames; j++) {
-                games[j - 1] = games[j];
-            }
-            ngames--;
-            i--; // Adjust i since we removed an element
-        } else if (games[i]->guest == player) {
-            // Guest disconnected - just mark as NULL, don't remove the game
-            games[i]->guest = NULL;
+    struct player *p = g_hash_table_lookup(players, GINT_TO_POINTER(fd));
+    struct game *game;
+    // Loop over the list and grab each id to lookup in the table then remove it
+    printf("DEBUG: Cleaning up %d hosted games for player %s\n", g_list_length(p->hosted_game_ids), p->username);
+    for (GList *l = p->hosted_game_ids; l != NULL; l = l->next) {
+        int game_id = GPOINTER_TO_INT(l->data);
+        game = g_hash_table_lookup(games, GINT_TO_POINTER(game_id));
+        if (!game) { continue; }
+        if (game->guest) {
+            // Notify guest that host has disconnected
+            message_t msg;
+            msg.payload = cJSON_CreateObject();
+            msg.status_code = ERROR;
+            cJSON_AddStringToObject(msg.payload, "message", "Host has disconnected.");
+            if (!send_message(game->guest->fd, &msg)) { printf("Could not deliver message to guest"); }
+            cJSON_Delete(msg.payload);
         }
+        printf("DEBUG: game with ID %d has %s\n", game_id, game->guest ? "a guest" : "no guest");
+        g_hash_table_remove(games, GINT_TO_POINTER(game_id));
     }
+    printf("DEBUG: Cleaning up %d joined games for player %s\n", g_list_length(p->joined_game_ids), p->username);
+    for (GList *l = p->joined_game_ids; l != NULL; l = l->next) {
+        int game_id = GPOINTER_TO_INT(l->data);
+        game = g_hash_table_lookup(games, GINT_TO_POINTER(game_id));
+        if (!game) { continue; }
+        // Notify host that guest has disconnected
+        message_t msg;
+        msg.payload = cJSON_CreateObject();
+        msg.status_code = ERROR;
+        cJSON_AddStringToObject(msg.payload, "message", "Guest has disconnected.");
+        if (!send_message(game->host->fd, &msg)) { printf("Could not deliver message to host"); }
+        cJSON_Delete(msg.payload);
+        game->guest = NULL;
+        game->status = WAITING_FOR_GUEST;
+    }
+    g_list_free(p->hosted_game_ids);
+    g_list_free(p->joined_game_ids);
+    g_hash_table_remove(players, GINT_TO_POINTER(fd));
 }

@@ -3,21 +3,14 @@
 
 #include "types.h"
 
-// Hash function to map file descriptor to an index in the player table
-int hash_fd(int fd);
-
-// Function to find a player by file descriptor
-struct player *player_get(int fd);
-
-// Function to add a new player to the player table
-bool player_add(struct player p);
-
-// Function to remove a player from the player table
-bool player_remove(int fd);
-
-// Function to check if a username already exists in the player table
+/// @brief Checks if a username already exists in the player table.
+/// @param username The username to check for existence.
+/// @return true if the username exists, false otherwise.
 bool username_exists(const char* username);
 
+/// @brief Generates a random 5-digit number (between 10000 and 99999) based on a given integer seed. It initializes the random number generator using the current time offset by the seed value to ensure variability.
+/// @param seed The seed value for random number generation
+/// @return A random 5-digit number
 long random_id(int seed);
 
 #endif

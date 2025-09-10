@@ -1,29 +1,21 @@
 #include "game.h"
 
-/// @brief Retrieves a game by its ID.
-/// @param game_id The ID of the game to retrieve.
-/// @return A pointer to the game structure if found, NULL otherwise.
-struct game *get_game(int game_id) {
-    for (int i = 0; i < ngames; i++) {
-        if (games[i]->id == game_id) {
-            return games[i];
-        }
-    }
-    return NULL;
-}
-
 /// @brief Creates a JSON list of all games for a player.
 /// @param player The player whose games should be listed.
 /// @return A JSON object containing the list of games.
 cJSON *create_game_list(struct player *player) {
     cJSON *list = cJSON_CreateObject();
     cJSON *array = cJSON_AddArrayToObject(list, "games_list");
-    for (int i = 0; i < ngames; i++) {
-        if (games[i]->guest == NULL && games[i]->host != player) {
-            cJSON *game = cJSON_CreateObject();
-            cJSON_AddNumberToObject(game, "game_id", games[i]->id);
-            cJSON_AddStringToObject(game, "host", games[i]->host->username);
-            cJSON_AddItemToArray(array, game);
+    GHashTableIter iter;
+    gpointer key, value;
+    g_hash_table_iter_init(&iter, games);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        struct game *game = (struct game *)value;
+        if (game->host != player && game->status == WAITING_FOR_GUEST) {
+            cJSON *game_info = cJSON_CreateObject();
+            cJSON_AddNumberToObject(game_info, "game_id", game->id);
+            cJSON_AddStringToObject(game_info, "host", game->host->username);
+            cJSON_AddItemToArray(array, game_info);
         }
     }
     return list;
@@ -34,16 +26,21 @@ cJSON *create_game_list(struct player *player) {
 /// @param host The player who is hosting the game.
 /// @return The ID of the newly created game.
 int create_game(int fd, struct player *host) {
-    struct game new_game;
-    new_game.id = random_id(fd); // Generate a unique game ID
-    new_game.host = host; // Set the host player
-    new_game.guest = NULL; // Initially no guest
-    new_game.status = WAITING_FOR_GUEST; // Set initial status
-    games[ngames] = malloc(sizeof(struct game));
-    *(games[ngames]) = new_game; // Add to the games array
-    host->games[host->ngames++] = games[ngames++];
-    printf("DEBUG: New game with ID %d created by player %s.\n", new_game.id, host->username);
-    return new_game.id;
+    struct game *new_game = malloc(sizeof(struct game));
+    int game_id;
+    do {
+        game_id = random_id(fd);
+    } while (g_hash_table_lookup(games, GINT_TO_POINTER(game_id)) != NULL);
+    *new_game = (struct game) {
+        .id = game_id,
+        .host = host,
+        .guest = NULL,
+        .status = WAITING_FOR_GUEST
+    };
+    g_hash_table_insert(games, GINT_TO_POINTER(new_game->id), new_game);
+    host->hosted_game_ids = g_list_insert(host->hosted_game_ids, GINT_TO_POINTER(new_game->id), g_list_length(host->hosted_game_ids));
+    printf("DEBUG: New game with ID %d created by player %s.\n", new_game->id, host->username);
+    return new_game->id;
 }
 
 /// @brief Evaluates the current state of the game.
@@ -96,7 +93,6 @@ enum GameStatus evaluate_game_state(char board[][3]) {
         return (potential_winner == 'X' ? PLAYER1_WINS : PLAYER2_WINS);
 }
 
-
 /// @brief Prints the current state of the game board to specified buffer.
 /// @param buffer The buffer to store the printed board.
 /// @param board The game board.
@@ -119,4 +115,14 @@ char * print_board(char buffer[], char board[][3]) {
     }
     buffer[k] = '\0'; // Null terminate the string
     return buffer;
+}
+
+/// @brief Frees the memory allocated for a game.
+/// @param data The game data to free.
+void free_game(gpointer data) {
+    if (!data) {
+        return;  // Prevent crash on NULL pointer
+    }
+    struct game *g = (struct game *)data;
+    free(g);
 }
