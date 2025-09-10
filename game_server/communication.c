@@ -177,84 +177,66 @@ void handle_request(int fd, message_t *request) {
             game->board[row][col] = game->host_turn ? 'X' : 'O';
             // Check if the game is over
             enum GameStatus state = evaluate_game_state(game->board);
-            message_t host_msg;
-            message_t guest_msg;
+            message_t other_player_msg;
             switch(state) {
                 case DRAW:
                     // Send draw notification to both players
-                    guest_msg.payload = cJSON_CreateObject();
-                    cJSON_AddStringToObject(guest_msg.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(guest_msg.payload, "result", "It's a draw!");
-                    send_message(game->guest->fd, &guest_msg);
-                    cJSON_Delete(guest_msg.payload);    
-                    host_msg.payload = cJSON_CreateObject();
-                    cJSON_AddStringToObject(host_msg.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(host_msg.payload, "result", "It's a draw!");
-                    send_message(game->host->fd, &host_msg);
-                    cJSON_Delete(host_msg.payload);
-                    // Response to whoever made the move
+                    response.status_code = OK;
                     cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
                     cJSON_AddStringToObject(response.payload, "result", "It's a draw!");
+                    other_player_msg.payload = cJSON_CreateObject();
+                    other_player_msg.status_code = OK;
+                    cJSON_AddStringToObject(other_player_msg.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(other_player_msg.payload, "result", "It's a draw!");
+                    // Check who made the last move
+                    if (game->host_turn) {
+                        send_message(game->guest->fd, &other_player_msg);
+                    } else {
+                        send_message(game->host->fd, &other_player_msg);
+                    }
                     cleanup = true;
                 break;
                 case PLAYER1_WINS: // X wins - host is X
-                    // Host wins, guest loses
-                    guest_msg.payload = cJSON_CreateObject();
-                    cJSON_AddStringToObject(guest_msg.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(guest_msg.payload, "result", "You lost!");
-                    send_message(game->guest->fd, &guest_msg);
-                    cJSON_Delete(guest_msg.payload);   
-                    host_msg.payload = cJSON_CreateObject();
-                    cJSON_AddStringToObject(host_msg.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(host_msg.payload, "result", "You won!");
-                    send_message(game->host->fd, &host_msg);
-                    cJSON_Delete(host_msg.payload);
-                    // Set response based on who made the move
+                    response.status_code = OK;
                     cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(response.payload, "result", 
-                        fd == game->host->fd ? "You won!" : "You lost!");
+                    cJSON_AddStringToObject(response.payload, "result", game->host_turn ? "You won!" : "You lost!");
+                    other_player_msg.payload = cJSON_CreateObject();
+                    other_player_msg.status_code = OK;
+                    cJSON_AddStringToObject(other_player_msg.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(other_player_msg.payload, "result", game->host_turn ? "You lost!" : "You won!");
+                    // Check who made the last move
+                    if (game->host_turn) {
+                        send_message(game->guest->fd, &other_player_msg);
+                    } else {
+                        send_message(game->host->fd, &other_player_msg);
+                    }
                     cleanup = true;
                 break;
                 case PLAYER2_WINS: // O wins - guest is O
                     // Host loses, guest wins
-                    guest_msg.payload = cJSON_CreateObject();
-                    cJSON_AddStringToObject(guest_msg.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(guest_msg.payload, "result", "You won!");
-                    send_message(game->guest->fd, &guest_msg);
-                    cJSON_Delete(guest_msg.payload);
-
-                    host_msg.payload = cJSON_CreateObject();
-                    cJSON_AddStringToObject(host_msg.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(host_msg.payload, "result", "You lost!");
-                    send_message(game->host->fd, &host_msg);
-                    cJSON_Delete(host_msg.payload);
-
-                    // Set response based on who made the move
+                    response.status_code = OK;
                     cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(response.payload, "result", 
-                        fd == game->guest->fd ? "You won!" : "You lost!");
+                    cJSON_AddStringToObject(response.payload, "result", game->host_turn ? "You lost!" : "You won!");
+                    other_player_msg.payload = cJSON_CreateObject();
+                    other_player_msg.status_code = OK;
+                    cJSON_AddStringToObject(other_player_msg.payload, "game_state", "Game Over");
+                    cJSON_AddStringToObject(other_player_msg.payload, "result", game->host_turn ? "You won!" : "You lost!");
+                    // Check who made the last move
+                    if (game->host_turn) {
+                        send_message(game->guest->fd, &other_player_msg);
+                    } else {
+                        send_message(game->host->fd, &other_player_msg);
+                    }
                     cleanup = true;
                 break;
-                case UNDECIDED:
-                    // Game is not over. Send table to other player
-                    game->host_turn = !game->host_turn;
-                    if (game->host_turn) {
-                        // Send update to host
-                        printf("DEBUG: Host Turn!\n");
-                        host_msg.status_code = OK;
-                        host_msg.payload = cJSON_CreateObject();
-                        cJSON_AddStringToObject(host_msg.payload, "game_state", "In Progress");
-                        cJSON_AddStringToObject(host_msg.payload, "board", print_board(buffer, game->board));
-                        send_message(game->host->fd, &host_msg);
-                    } else {
-                        // Send update to guest
-                        printf("DEBUG: Guest Turn!\n");
-                        guest_msg.status_code = OK;
-                        guest_msg.payload = cJSON_CreateObject();
-                        cJSON_AddStringToObject(guest_msg.payload, "game_state", "In Progress");
-                        cJSON_AddStringToObject(guest_msg.payload, "board", print_board(buffer, game->board));
-                        send_message(game->guest->fd, &guest_msg);
-                    }
+                case UNDECIDED: // Game is not over. Send table to other player
+                    game->host_turn = !game->host_turn; // Switch turn using NOT operator
+                    other_player_msg.payload = cJSON_CreateObject();
+                    other_player_msg.status_code = OK;
+                    cJSON_AddStringToObject(other_player_msg.payload, "game_state", "In Progress");
+                    cJSON_AddStringToObject(other_player_msg.payload, "board", print_board(buffer, game->board));
+                    printf("DEBUG: %s Turn!\n", game->host_turn ? "Host" : "Guest");
+                    send_message(game->host_turn ? game->host->fd : game->guest->fd, &other_player_msg);
                 break;
             }
             response.status_code = OK;
