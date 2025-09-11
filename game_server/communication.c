@@ -158,95 +158,100 @@ void handle_request(int fd, message_t *request) {
         bool cleanup = false;
         cJSON *id_item = cJSON_GetObjectItem(request->payload, "game_id");
         struct game *game = g_hash_table_lookup(games, GINT_TO_POINTER(id_item->valueint));
-        cJSON *move_item = cJSON_GetObjectItem(request->payload, "move");
-        int move = move_item->valueint;
-        int row = (move - 1) / 3;
-        int col = (move - 1) % 3;
-        char buffer[16];
-        if (move >= 1 && move <= 9 && game->board[row][col] == 'E') {
-            game->board[row][col] = game->host_turn ? 'X' : 'O';
-            // Check if the game is over
-            enum GameStatus state = evaluate_game_state(game->board);
-            message_t other_player_msg;
-            switch(state) {
-                case DRAW:
-                    // Send draw notification to both players
-                    response.status_code = OK;
-                    cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(response.payload, "result", "It's a draw!");
-                    other_player_msg.payload = cJSON_CreateObject();
-                    other_player_msg.status_code = OK;
-                    cJSON_AddStringToObject(other_player_msg.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(other_player_msg.payload, "result", "It's a draw!");
-                    // Check who made the last move
-                    if (game->host_turn) {
-                        send_message(game->guest->fd, &other_player_msg);
-                    } else {
-                        send_message(game->host->fd, &other_player_msg);
-                    }
-                    cleanup = true;
-                break;
-                case PLAYER1_WINS: // X wins - host is X
-                    response.status_code = OK;
-                    cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(response.payload, "result", game->host_turn ? "You won!" : "You lost!");
-                    other_player_msg.payload = cJSON_CreateObject();
-                    other_player_msg.status_code = OK;
-                    cJSON_AddStringToObject(other_player_msg.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(other_player_msg.payload, "result", game->host_turn ? "You lost!" : "You won!");
-                    // Check who made the last move
-                    if (game->host_turn) {
-                        send_message(game->guest->fd, &other_player_msg);
-                    } else {
-                        send_message(game->host->fd, &other_player_msg);
-                    }
-                    cleanup = true;
-                break;
-                case PLAYER2_WINS: // O wins - guest is O
-                    // Host loses, guest wins
-                    response.status_code = OK;
-                    cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(response.payload, "result", game->host_turn ? "You lost!" : "You won!");
-                    other_player_msg.payload = cJSON_CreateObject();
-                    other_player_msg.status_code = OK;
-                    cJSON_AddStringToObject(other_player_msg.payload, "game_state", "Game Over");
-                    cJSON_AddStringToObject(other_player_msg.payload, "result", game->host_turn ? "You won!" : "You lost!");
-                    // Check who made the last move
-                    if (game->host_turn) {
-                        send_message(game->guest->fd, &other_player_msg);
-                    } else {
-                        send_message(game->host->fd, &other_player_msg);
-                    }
-                    cleanup = true;
-                break;
-                case UNDECIDED: // Game is not over. Send table to other player
-                    game->host_turn = !game->host_turn; // Switch turn using NOT operator
-                    other_player_msg.payload = cJSON_CreateObject();
-                    other_player_msg.status_code = OK;
-                    cJSON_AddStringToObject(other_player_msg.payload, "game_state", "In Progress");
-                    cJSON_AddStringToObject(other_player_msg.payload, "board", print_board(buffer, game->board));
-                    printf("DEBUG: %s Turn!\n", game->host_turn ? "Host" : "Guest");
-                    send_message(game->host_turn ? game->host->fd : game->guest->fd, &other_player_msg);
-                break;
+        if (game && game->host && game->guest) {
+            char buffer[16];
+            cJSON *move_item = cJSON_GetObjectItem(request->payload, "move");
+            int move = move_item->valueint;
+            int row = (move - 1) / 3;
+            int col = (move - 1) % 3;
+            if (move >= 1 && move <= 9 && game->board[row][col] == 'E') {
+                game->board[row][col] = game->host_turn ? 'X' : 'O';
+                // Check if the game is over
+                enum GameStatus state = evaluate_game_state(game->board);
+                message_t other_player_msg;
+                switch(state) {
+                    case DRAW:
+                        // Send draw notification to both players
+                        response.status_code = OK;
+                        cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
+                        cJSON_AddStringToObject(response.payload, "result", "It's a draw!");
+                        other_player_msg.payload = cJSON_CreateObject();
+                        other_player_msg.status_code = OK;
+                        cJSON_AddStringToObject(other_player_msg.payload, "game_state", "Game Over");
+                        cJSON_AddStringToObject(other_player_msg.payload, "result", "It's a draw!");
+                        // Check who made the last move
+                        if (game->host_turn) {
+                            send_message(game->guest->fd, &other_player_msg);
+                        } else {
+                            send_message(game->host->fd, &other_player_msg);
+                        }
+                        cleanup = true;
+                    break;
+                    case PLAYER1_WINS: // X wins - host is X
+                        response.status_code = OK;
+                        cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
+                        cJSON_AddStringToObject(response.payload, "result", game->host_turn ? "You won!" : "You lost!");
+                        other_player_msg.payload = cJSON_CreateObject();
+                        other_player_msg.status_code = OK;
+                        cJSON_AddStringToObject(other_player_msg.payload, "game_state", "Game Over");
+                        cJSON_AddStringToObject(other_player_msg.payload, "result", game->host_turn ? "You lost!" : "You won!");
+                        // Check who made the last move
+                        if (game->host_turn) {
+                            send_message(game->guest->fd, &other_player_msg);
+                        } else {
+                            send_message(game->host->fd, &other_player_msg);
+                        }
+                        cleanup = true;
+                    break;
+                    case PLAYER2_WINS: // O wins - guest is O
+                        // Host loses, guest wins
+                        response.status_code = OK;
+                        cJSON_AddStringToObject(response.payload, "game_state", "Game Over");
+                        cJSON_AddStringToObject(response.payload, "result", game->host_turn ? "You lost!" : "You won!");
+                        other_player_msg.payload = cJSON_CreateObject();
+                        other_player_msg.status_code = OK;
+                        cJSON_AddStringToObject(other_player_msg.payload, "game_state", "Game Over");
+                        cJSON_AddStringToObject(other_player_msg.payload, "result", game->host_turn ? "You won!" : "You lost!");
+                        // Check who made the last move
+                        if (game->host_turn) {
+                            send_message(game->guest->fd, &other_player_msg);
+                        } else {
+                            send_message(game->host->fd, &other_player_msg);
+                        }
+                        cleanup = true;
+                    break;
+                    case UNDECIDED: // Game is not over. Send table to other player
+                        game->host_turn = !game->host_turn; // Switch turn using NOT operator
+                        other_player_msg.payload = cJSON_CreateObject();
+                        other_player_msg.status_code = OK;
+                        cJSON_AddStringToObject(other_player_msg.payload, "game_state", "In Progress");
+                        cJSON_AddStringToObject(other_player_msg.payload, "board", print_board(buffer, game->board));
+                        printf("DEBUG: %s Turn!\n", game->host_turn ? "Host" : "Guest");
+                        send_message(game->host_turn ? game->host->fd : game->guest->fd, &other_player_msg);
+                    break;
+                }
+                response.status_code = OK;
+            } else {
+                response.status_code = ERROR;
+                cJSON_AddStringToObject(response.payload, "message", "Invalid move! Try again.");
             }
-            response.status_code = OK;
+            if (cleanup) {
+                printf("DEBUG: Cleaning up game resources\n");
+
+                struct player *host = game->host;
+                struct player *guest = game->guest;
+
+                // Remove game from table
+                // Remove game from host's list
+                host->hosted_game_ids = g_list_remove(host->hosted_game_ids, GINT_TO_POINTER(game->id));
+                // Remove game from guest's list
+                guest->joined_game_ids = g_list_remove(guest->joined_game_ids, GINT_TO_POINTER(game->id));
+                
+                g_hash_table_remove(games, GINT_TO_POINTER(game->id));
+            }
         } else {
-            response.status_code = ERROR;
-            cJSON_AddStringToObject(response.payload, "message", "Invalid move! Try again.");
-        }
-        if (cleanup) {
-            printf("DEBUG: Cleaning up game resources\n");
-
-            struct player *host = game->host;
-            struct player *guest = game->guest;
-
-            // Remove game from table
-            // Remove game from host's list
-            host->hosted_game_ids = g_list_remove(host->hosted_game_ids, GINT_TO_POINTER(game->id));
-            // Remove game from guest's list
-            guest->joined_game_ids = g_list_remove(guest->joined_game_ids, GINT_TO_POINTER(game->id));
-            
-            g_hash_table_remove(games, GINT_TO_POINTER(game->id));
+            cJSON_Delete(response.payload);
+            return;
         }
     }
     // Finally send response
@@ -285,10 +290,13 @@ void cleanup_games_for_player(int fd) {
         msg.payload = cJSON_CreateObject();
         msg.status_code = ERROR;
         cJSON_AddStringToObject(msg.payload, "message", "Guest has disconnected.");
+        cJSON_AddStringToObject(msg.payload, "game_state", "Game Over");
         if (!send_message(game->host->fd, &msg)) { printf("Could not deliver message to host"); }
         cJSON_Delete(msg.payload);
         game->guest = NULL;
         game->status = WAITING_FOR_GUEST;
+        memset(game->board, 'E', sizeof(game->board));
+        game->host_turn = true;
     }
     g_list_free(p->hosted_game_ids);
     g_list_free(p->joined_game_ids);

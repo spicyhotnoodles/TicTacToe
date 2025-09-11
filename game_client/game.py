@@ -158,18 +158,20 @@ class GameManager():
     
     def __play_game(self, game_id):
         while True:
-            # Receive game infos
             self.ui.display("Waiting for opponent...")
+            # Receive board
             data = self.communication.receive_message()
+            # Check if there was an error: (eg guest has disconnected, host has disconnected, game has ended somehow, ...)
             if data['status'] == Status.OK.value:
                 # Check if game is over after opponent move
                 if data['payload']['game_state'] != "Game Over":
-                    # Make your move
+                    # Make the move
                     while True:
                         self.ui.display(self.ui.color_board(data['payload']['board']))
                         uinput = input("Its your turn, enter a move (1-9): ")
                         self.communication.send_message("make_move", {"game_id" : game_id, "move" : int(uinput)})
                         response = self.communication.receive_message()
+                        # Check if move was valid
                         if response['status'] != Status.ERROR.value:
                             # Check if game is over after own move
                             if "game_state" in response['payload'] and response['payload']['game_state'] == "Game Over":
@@ -177,10 +179,17 @@ class GameManager():
                                 return True
                             break
                         else:
+                            # Check if there was an error: (eg guest has disconnected, host has disconnected, game has ended somehow, ...)
+                            if "game_state" in response['payload'] and response['payload']['game_state'] == "Game Over":
+                                self.ui.alert(response['payload']['message'])
+                                return False
+                            # Game was not over, move is invalid though
                             self.ui.alert(response['payload']['message'])
                 else:
+                    # Game was over after opponent move
                     self.ui.alert(data['payload']['result'])
                     return True
             else:
+                # There was an error while waiting for opponent move (other player may have disconnected, connection lost, ...)
                 self.ui.alert(f"Error: {data['payload']['message']}")
                 return False
