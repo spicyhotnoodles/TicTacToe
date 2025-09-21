@@ -79,7 +79,6 @@ void handle_request(int fd, message_t *request) {
         cJSON *game_list = create_game_list(player);
         cJSON *array = cJSON_GetObjectItem(game_list, "games_list");
         int count = cJSON_GetArraySize(array);
-        cJSON_Delete(response.payload);
         if (count == 0) {
             response.status_code = ERROR;
             cJSON_AddStringToObject(response.payload, "message", "No active games available");
