@@ -9,8 +9,6 @@ class CommunicationManager:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.message_queue = queue.Queue()
         self.notification_queue = notification_queue
-        with open("debug_received.json", "a", encoding="utf-8") as f:
-            f.write("- New Execution -\n\n")
         self.receiver_thread = threading.Thread(target=self.__receiver, daemon=True)
         self.connect()
 
@@ -68,7 +66,7 @@ class CommunicationManager:
                         break
                     # obj is the parsed JSON value, buf[:end] is the exact consumed text
                     message_text = buf[:end]
-                    with open("debug_received.json", "a", encoding="utf-8") as f:
+                    with open("debug_received.json", "w", encoding="utf-8") as f:
                         f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())} - Received message: \n\n")
                         f.write(message_text + "\n\n")
                     parsed = obj
