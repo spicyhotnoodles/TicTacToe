@@ -11,12 +11,19 @@ Multiplayer tic-tac-toe game developed with server-client architecture. The serv
     docker build . -t game-server  && docker run -it -p 12345:12345 game-server
     ```
 ## How to run the client
+> ⚠️ Make sure the server is up and running before launching the client
 Make sure Python 3.x is installed on your system. You can download it from [python.org](https://www.python.org/downloads/).
 Once you have Python installed, you can run the client by executing the following command in the terminal:
 ```shell
 python run.py
 ```
 ## How to play
+<p float="left">
+  <img src="https://github.com/user-attachments/assets/26ffb8b1-835f-4249-b966-2508c372fe16" width="32%" />
+  <img src="https://github.com/user-attachments/assets/7f89b4c1-0cd6-42f7-8b8e-678a238cc5e6" width="32%" />
+  <img src="https://github.com/user-attachments/assets/72ee2b0d-e860-4f0a-a78e-0d81caa754ab" width="32%" />
+</p>
+
 This program is a multiplayer tic-tac-toe game so, in order to play either create a new game or join an existing one.
 + To create a new game, simply select the option from the menu and wait for another player to join.
     + Always check "My Games" to see if a fellow guest has requested to join. If so select the game and accept or deny the request.      
