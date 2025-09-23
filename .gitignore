@@ -53,3 +53,15 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+# VSCode settings
+.vscode/
+
+# Build dir
+build/
+
+# pyinstaller
+dist
+run.spec
+
+# debug log files
+debug_received.json

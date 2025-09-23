@@ -1,3 +1,2 @@
-HOST    = "localhost"
-PORT    = 6969
-MAX_NAME_LEN = 16
+SERVER_IP    = "localhost"
+SERVER_PORT  = 12345
