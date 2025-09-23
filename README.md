@@ -11,8 +11,9 @@ Multiplayer tic-tac-toe game developed with server-client architecture. The serv
     docker build . -t game-server  && docker run -it -p 12345:12345 game-server
     ```
 ## How to run the client
-> ⚠️ Make sure the server is up and running before launching the client
-Make sure Python 3.x is installed on your system. You can download it from [python.org](https://www.python.org/downloads/).
+> ⚠️ Make sure the server is up and running **before** launching the client
+
+Python 3.x is required on your system. You can download it from [python.org](https://www.python.org/downloads/).
 Once you have Python installed, you can run the client by executing the following command in the terminal:
 ```shell
 python run.py
